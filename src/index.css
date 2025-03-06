@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-gray-600;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900;
+  }
+}
+
+.gradient-bg {
+  background: radial-gradient(circle at top left, #7c3aed 0%, #4f46e5 100%);
+}
+
+.feature-gradient {
+  background: linear-gradient(to right bottom, #fafafa 30%, #f4f4f5);
+}

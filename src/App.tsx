@@ -6,6 +6,11 @@ import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
 import { Roadmap } from './pages/Roadmap';
 import { KpiFinancial } from './pages/KpiFinancial';
+import { ScenarioPlanning } from './pages/ScenarioPlanning';
+import CommunicationLog from './pages/CommunicationLog';
+import DocumentCenter from './pages/DocumentCenter';
+import Settings from './pages/Settings';
+import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
 import { supabase } from './lib/supabase';
 import {
   BarChart3,
@@ -17,9 +22,10 @@ import {
   MessageSquare,
   Phone,
   PieChart,
-  Settings,
+  Settings as SettingsIcon,
   Shield,
   Users,
+  Sliders
 } from 'lucide-react';
 
 function FeatureCard({ icon: Icon, title, description, benefit }) {
@@ -185,7 +191,7 @@ function HomePage() {
                 benefit="Improve team collaboration by keeping every essential file at your fingertips."
               />
               <FeatureCard
-                icon={Settings}
+                icon={SettingsIcon}
                 title="Strategy Alignment"
                 description="Visualize how individual projects contribute to overarching organizational goals."
                 benefit="Ensure every initiative is aligned with your strategic vision for maximum impact."
@@ -301,7 +307,7 @@ function ProtectedRoute({ children }) {
       setUser(data.user);
       setLoading(false);
     };
-    
+
     checkUser();
   }, []);
 
@@ -326,31 +332,76 @@ function App() {
         <Route path="/" element={<><Navbar /><HomePage /></>} />
         <Route path="/login" element={<><Navbar /><Login /></>} />
         <Route path="/signup" element={<><Navbar /><Signup /></>} />
-        <Route 
-          path="/dashboard/*" 
+        <Route
+          path="/dashboard/*"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/roadmap" 
+        <Route
+          path="/roadmap"
           element={
             <ProtectedRoute>
               <Navbar />
               <Roadmap />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/kpi" 
+        <Route
+          path="/kpi"
           element={
             <ProtectedRoute>
               <Navbar />
               <KpiFinancial />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/scenario-planning"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <ScenarioPlanning />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communication-log"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <CommunicationLog />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/document-center"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <DocumentCenter />
+            </ProtectedRoute>
+          }
+        />
+         <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/custom-insights"
+          element={
+            <ProtectedRoute>
+              <Navbar />
+              <CustomInsights />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </Router>

@@ -148,7 +148,7 @@ export function Dashboard() {
           <a 
             href="#" 
             className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-            onClick={(e) => { e.preventDefault(); setActiveTab('scenario'); }}
+            onClick={(e) => { e.preventDefault(); setActiveTab('scenario'); navigate('/scenario-planning')}}
           >
             <Lightbulb className="h-5 w-5 mr-3 text-gray-500" />
             <span>Scenario Planning</span>
@@ -156,7 +156,7 @@ export function Dashboard() {
           <a 
             href="#" 
             className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-            onClick={(e) => { e.preventDefault(); setActiveTab('communication'); }}
+            onClick={(e) => { e.preventDefault(); setActiveTab('communication'); navigate('/communication-log')}}
           >
             <MessageSquare className="h-5 w-5 mr-3 text-gray-500" />
             <span>Communication Hub</span>
@@ -164,7 +164,7 @@ export function Dashboard() {
           <a 
             href="#" 
             className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-            onClick={(e) => { e.preventDefault(); setActiveTab('documents'); }}
+            onClick={(e) => { e.preventDefault(); setActiveTab('documents'); navigate('/document-center')}}
           >
             <FolderOpen className="h-5 w-5 mr-3 text-gray-500" />
             <span>Document Center</span>
@@ -184,7 +184,7 @@ export function Dashboard() {
           <a 
             href="#" 
             className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-            onClick={(e) => { e.preventDefault(); setActiveTab('settings'); }}
+            onClick={(e) => { e.preventDefault(); setActiveTab('settings'); navigate('/settings')}}
           >
             <Settings className="h-5 w-5 mr-3 text-gray-500" />
             <span>Settings</span>

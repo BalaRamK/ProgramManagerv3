@@ -786,9 +786,11 @@ export function Roadmap() {
   // Fetch organizations and users from Supabase
   useEffect(() => {
     const fetchOrganizations = async () => {
+      const { data: userData } = await supabase.auth.getUser();
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('*');
+        .select('*')
+        .eq('user_id', userData.user.id); // Filter by user_id
       if (orgData) {
         setOrganizations(orgData);
       }
@@ -798,11 +800,13 @@ export function Roadmap() {
     };
 
     const fetchUsers = async () => {
-      const { data: userData, error: userError } = await supabase
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: usersData, error: userError } = await supabase
         .from('users')
-        .select('*');
-      if (userData) {
-        setUsers(userData);
+        .select('*')
+        .eq('organization_id', userData.user.organization_id); // Filter by organization_id
+      if (usersData) {
+        setUsers(usersData);
       }
       if (userError) {
         console.error('Error fetching users:', userError);

@@ -11,7 +11,9 @@ import CommunicationLog from './pages/CommunicationLog';
 import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
 import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
+import { DashboardPreview } from './components/DashboardPreview';
 import { supabase } from './lib/supabase';
+import { User } from '@supabase/supabase-js';
 import {
   BarChart3,
   Calendar,
@@ -28,7 +30,18 @@ import {
   Sliders
 } from 'lucide-react';
 
-function FeatureCard({ icon: Icon, title, description, benefit }) {
+interface FeatureProps {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  benefit: string;
+}
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+function FeatureCard({ icon: Icon, title, description, benefit }: FeatureProps) {
   return (
     <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm transition-all hover:shadow-lg">
       <div className="absolute inset-0 feature-gradient opacity-0 transition-opacity group-hover:opacity-100" />
@@ -44,37 +57,6 @@ function FeatureCard({ icon: Icon, title, description, benefit }) {
           <p className="text-sm text-gray-500">
             <span className="font-medium text-gray-700">Why It Matters:</span> {benefit}
           </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardPreview() {
-  return (
-    <div className="relative overflow-hidden rounded-3xl bg-white p-8 shadow-2xl">
-      <div className="absolute inset-0 bg-gradient-to-b from-violet-50/50" />
-      <div className="relative">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          <div className="rounded-xl bg-gradient-to-br from-violet-50 to-violet-100/50 p-4">
-            <BarChart3 className="h-6 w-6 text-violet-600 mb-2" />
-            <h4 className="font-medium">KPI Tracking</h4>
-          </div>
-          <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 p-4">
-            <LineChart className="h-6 w-6 text-blue-600 mb-2" />
-            <h4 className="font-medium">Analytics</h4>
-          </div>
-          <div className="rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 p-4">
-            <PieChart className="h-6 w-6 text-purple-600 mb-2" />
-            <h4 className="font-medium">Reports</h4>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="h-40 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-24 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50" />
-            <div className="h-24 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50" />
-          </div>
         </div>
       </div>
     </div>
@@ -297,18 +279,15 @@ function HomePage() {
   );
 }
 
-function ProtectedRoute({ children }) {
-  const [user, setUser] = useState(null);
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user as User | null);
       setLoading(false);
-    };
-
-    checkUser();
+    });
   }, []);
 
   if (loading) {

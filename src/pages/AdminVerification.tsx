@@ -19,13 +19,19 @@ export function AdminVerification() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('AdminVerification component mounted');
     checkAdminAccess();
   }, []);
 
   const checkAdminAccess = async () => {
     try {
+      console.log('Checking admin access...');
       setError(null);
       setDebugInfo(null);
+      
+      // Log environment variables
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError) {
@@ -43,6 +49,8 @@ export function AdminVerification() {
         return;
       }
 
+      console.log('Current user:', user.email);
+      
       if (user.email !== ADMIN_EMAIL) {
         console.log('Access denied. User:', user.email);
         setError(`Access denied. You must be logged in as ${ADMIN_EMAIL}`);

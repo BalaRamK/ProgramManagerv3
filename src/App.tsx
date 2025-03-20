@@ -12,6 +12,7 @@ import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
 import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
 import { DashboardPreview } from './components/DashboardPreview';
+import { AdminVerification } from './pages/AdminVerification';
 import { supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 import {
@@ -304,6 +305,34 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   return user ? children : <Navigate to="/login" />;
 }
 
+const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
+
+interface AdminRouteProps {
+  children: React.ReactNode;
+}
+
+function AdminRoute({ children }: AdminRouteProps) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+      </div>
+    );
+  }
+
+  return user?.email === ADMIN_EMAIL ? children : <Navigate to="/" />;
+}
+
 function App() {
   return (
     <Router>
@@ -311,6 +340,15 @@ function App() {
         <Route path="/" element={<><Navbar /><HomePage /></>} />
         <Route path="/login" element={<><Navbar /><Login /></>} />
         <Route path="/signup" element={<><Navbar /><Signup /></>} />
+        <Route
+          path="/admin/verification"
+          element={
+            <AdminRoute>
+              <Navbar />
+              <AdminVerification />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/dashboard/*"
           element={

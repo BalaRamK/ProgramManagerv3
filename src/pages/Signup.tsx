@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
+
 export function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,20 +28,70 @@ export function Signup() {
       setError("Password must be at least 6 characters");
       return;
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
     
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // 1. Create auth user first
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            status: 'pending_admin_approval',
+          }
+        }
       });
 
-      if (error) throw error;
-      
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      // 2. Try to create the pending_users record
+      try {
+        const { error: pendingError } = await supabase
+          .from('pending_users')
+          .insert([
+            {
+              email,
+              status: 'pending_admin_approval',
+            }
+          ]);
+
+        if (pendingError) {
+          console.error('Error creating pending user record:', pendingError);
+          // Continue with signup even if this fails
+        }
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        // Continue with signup even if this fails
+      }
+
+      // 3. Try to send admin notification
+      try {
+        await supabase.functions.invoke('send-admin-notification', {
+          body: { adminEmail: ADMIN_EMAIL, userEmail: email }
+        });
+      } catch (notifyError) {
+        console.error('Admin notification error:', notifyError);
+        // Continue with signup even if this fails
+      }
+
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during signup');
+      console.error('Signup error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred during signup. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -50,14 +102,18 @@ export function Signup() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-sm">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900">Account Created!</h2>
-            <p className="mt-2 text-gray-600">Your account has been successfully created.</p>
+            <h2 className="text-3xl font-bold text-gray-900">Thank You for Signing Up!</h2>
+            <div className="mt-4 space-y-4 text-gray-600">
+              <p>Your account is pending admin approval.</p>
+              <p>You will receive an email once your account is approved.</p>
+              <p>After approval, you'll need to verify your email before logging in.</p>
+            </div>
             <div className="mt-6">
               <button
                 onClick={() => navigate('/login')}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
               >
-                Go to Login
+                Return to Login
               </button>
             </div>
           </div>

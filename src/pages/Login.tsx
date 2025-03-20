@@ -15,12 +15,43 @@ export function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // First check if user is in pending_users table
+      const { data: pendingUser } = await supabase
+        .from('pending_users')
+        .select('status')
+        .eq('email', email)
+        .single();
+
+      if (pendingUser) {
+        if (pendingUser.status === 'pending_admin_approval') {
+          setError('Your account is pending admin approval. Please check your email for updates.');
+          return;
+        } else if (pendingUser.status === 'pending_email_verification') {
+          setError('Please verify your email before logging in. Check your inbox for the verification link.');
+          return;
+        }
+      }
+
+      // Attempt to sign in
+      const { error: signInError, data: { user } } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (signInError) throw signInError;
+
+      // Check user metadata for verification status
+      if (user?.user_metadata?.status === 'pending_admin_approval') {
+        setError('Your account is pending admin approval.');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (!user?.email_confirmed_at) {
+        setError('Please verify your email before logging in.');
+        await supabase.auth.signOut();
+        return;
+      }
 
       navigate('/dashboard');
     } catch (err) {

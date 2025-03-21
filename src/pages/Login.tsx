@@ -15,47 +15,30 @@ export function Login() {
     setLoading(true);
 
     try {
-      // First check if user is in pending_users table
-      const { data: pendingUser } = await supabase
-        .from('pending_users')
-        .select('status')
-        .eq('email', email)
-        .single();
-
-      if (pendingUser) {
-        if (pendingUser.status === 'pending_admin_approval') {
-          setError('Your account is pending admin approval. Please check your email for updates.');
-          return;
-        } else if (pendingUser.status === 'pending_email_verification') {
-          setError('Please verify your email before logging in. Check your inbox for the verification link.');
-          return;
-        }
-      }
-
-      // Attempt to sign in
       const { error: signInError, data: { user } } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (signInError) throw signInError;
-
-      // Check user metadata for verification status
-      if (user?.user_metadata?.status === 'pending_admin_approval') {
-        setError('Your account is pending admin approval.');
-        await supabase.auth.signOut();
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please try again.');
+        } else {
+          setError(signInError.message);
+        }
         return;
       }
 
-      if (!user?.email_confirmed_at) {
-        setError('Please verify your email before logging in.');
-        await supabase.auth.signOut();
+      if (!user) {
+        setError('An error occurred during login. Please try again.');
         return;
       }
 
+      // Successfully authenticated
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -71,7 +54,7 @@ export function Login() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link to="/signup" className="font-medium text-violet-600 hover:text-violet-500">
-              create a new account
+              request access
             </Link>
           </p>
         </div>
@@ -130,9 +113,9 @@ export function Login() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-violet-600 hover:text-violet-500">
+              <Link to="/reset-password" className="font-medium text-violet-600 hover:text-violet-500">
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 

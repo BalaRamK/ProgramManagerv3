@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
@@ -184,6 +184,157 @@ function HomePage() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="relative py-24 bg-gradient-to-b from-gray-50 to-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-4">
+              Choose the Right Plan for Your Program Management Needs
+            </h2>
+            <p className="text-lg text-gray-600">
+              Flexible pricing options designed to scale with your team—from individual users to enterprise-level organizations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {/* Free Plan */}
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+              <div className="p-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Free</h3>
+                <p className="text-violet-600 font-medium mb-6">
+                  Ideal For: Individual users and small teams getting started
+                </p>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Access to all standard modules</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Document Upload module not available</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Limited email and community support</span>
+                  </li>
+                </ul>
+                <div className="space-y-3">
+                  <Link
+                    to="/signup"
+                    className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200"
+                  >
+                    Get Started
+                  </Link>
+                  <button
+                    onClick={() => window.open('https://github.com/yourusername/yourrepo', '_blank')}
+                    className="block w-full bg-green-100 text-green-700 text-center py-3 px-4 rounded-lg hover:bg-green-200 transition-colors duration-200"
+                  >
+                    Contribute
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
+              <div className="absolute top-0 right-0 bg-violet-600 text-white px-4 py-1 rounded-bl-lg text-sm font-medium">
+                Popular
+              </div>
+              <div className="p-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Pro</h3>
+                <p className="text-violet-600 font-medium mb-6">
+                  Ideal For: Growing teams needing enhanced functionality
+                </p>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold">$5</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Everything in Free</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Document Upload module</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Priority support</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Request specific modules</span>
+                  </li>
+                </ul>
+                <Link
+                  to="/signup?plan=pro"
+                  className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200"
+                >
+                  Get Started
+                </Link>
+              </div>
+            </div>
+
+            {/* Executive Plan */}
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+              <div className="p-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Executive</h3>
+                <p className="text-violet-600 font-medium mb-6">
+                  Ideal For: Enterprise-level organizations with custom needs
+                </p>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Tailored modules for your company</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Deployed in your environment</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Dedicated Admin modules</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Full white-glove support</span>
+                  </li>
+                </ul>
+                <button
+                  onClick={() => window.location.href = 'mailto:balaramakrishnasaikarumanchi0@gmail.com?subject=Executive Plan Inquiry'}
+                  className="block w-full bg-gray-900 text-white text-center py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors duration-200"
+                >
+                  Get In Touch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Dashboard Preview Section */}
       <section className="relative py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -263,10 +414,10 @@ function HomePage() {
               <h4 className="text-base font-semibold text-white">Contact</h4>
               <ul className="mt-4 space-y-2 text-sm text-gray-400">
                 <li className="flex items-center gap-2">
-                  <Globe2 className="h-4 w-4" /> www.programmatrix.com
+                  <Globe2 className="h-4 w-4" /> https://program-matrix.vercel.app/
                 </li>
                 <li className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" /> +1 (555) 123-4567
+                  <Phone className="h-4 w-4" /> +91 94927 06718
                 </li>
               </ul>
             </div>

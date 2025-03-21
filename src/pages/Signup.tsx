@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
 
 export function Signup() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,6 +17,12 @@ export function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    // Validate name
+    if (!name.trim()) {
+      setError("Please enter your name");
+      return;
+    }
     
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -45,6 +52,7 @@ export function Signup() {
         password,
         options: {
           data: {
+            name: name,
             status: 'pending_admin_approval',
           }
         }
@@ -54,6 +62,10 @@ export function Signup() {
         throw signUpError;
       }
 
+      if (!signUpData.user) {
+        throw new Error('Failed to create user');
+      }
+
       // 2. Try to create the pending_users record
       try {
         const { error: pendingError } = await supabase
@@ -61,7 +73,9 @@ export function Signup() {
           .insert([
             {
               email,
+              name,
               status: 'pending_admin_approval',
+              auth_user_id: signUpData.user.id
             }
           ]);
 
@@ -146,6 +160,21 @@ export function Signup() {
             </div>
           )}
           <div className="rounded-md shadow-sm space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1 relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-violet-600 sm:text-sm sm:leading-6"
+                placeholder="John Doe"
+              />
+            </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address

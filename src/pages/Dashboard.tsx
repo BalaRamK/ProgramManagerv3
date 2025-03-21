@@ -251,7 +251,7 @@ export function Dashboard() {
               <>
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-                  <p className="text-gray-600">Welcome back! Here's what's happening with your programs.</p>
+                  <p className="text-gray-600">Welcome back{user?.user_metadata?.name ? `, ${user.user_metadata.name}` : ''}! Here's what's happening with your programs.</p>
                 </div>
                 
                 {/* KPI Overview */}

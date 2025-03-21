@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
@@ -28,8 +29,8 @@ serve(async (req) => {
     // Send rejection email
     const { error } = await supabaseClient.auth.admin.sendRawUserActionEmail({
       email: userEmail,
-      action: 'reject_signup',
-      redirectTo: `${Deno.env.get('SITE_URL')}/signup`,
+      action: 'rejection',
+      redirectTo: `${Deno.env.get('SITE_URL')}/auth/callback`,
     })
 
     if (error) {

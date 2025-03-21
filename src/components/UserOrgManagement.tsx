@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Users, Building2 } from 'lucide-react';
+import { Plus, Users, Building2, X } from 'lucide-react';
 
 interface Organization {
   id: string;
@@ -11,9 +11,8 @@ interface Organization {
 
 interface DashboardUser {
   id: string;
-  user_id: string;
-  email: string;
   name: string;
+  email: string;
   organization_id: string;
   role: 'user' | 'admin';
   created_at: string;
@@ -22,9 +21,11 @@ interface DashboardUser {
 export function UserOrgManagement() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
+  const [showUserListModal, setShowUserListModal] = useState(false);
+  const [showOrgListModal, setShowOrgListModal] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [dashboardUsers, setDashboardUsers] = useState<DashboardUser[]>([]);
-  const [newUser, setNewUser] = useState({ email: '', role: 'user' as const, organization_id: '' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'user' as const, organization_id: '' });
   const [newOrg, setNewOrg] = useState({ name: '', description: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,28 +54,11 @@ export function UserOrgManagement() {
     try {
       const { data, error } = await supabase
         .from('dashboard_users')
-        .select(`
-          id,
-          user_id,
-          role,
-          organization_id,
-          created_at,
-          users (
-            email,
-            name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const formattedUsers = data?.map(user => ({
-        ...user,
-        email: user.users.email,
-        name: user.users.name
-      })) || [];
-
-      setDashboardUsers(formattedUsers);
+      setDashboardUsers(data || []);
     } catch (err) {
       console.error('Error fetching dashboard users:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
@@ -87,28 +71,14 @@ export function UserOrgManagement() {
     setError(null);
 
     try {
-      // First, check if the user exists in the auth.users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', newUser.email)
-        .single();
-
-      if (userError) throw new Error('User not found. Please ensure the user has registered first.');
-
-      // Then create the dashboard user
-      const { error: dashboardUserError } = await supabase
+      const { error } = await supabase
         .from('dashboard_users')
-        .insert([{
-          user_id: userData.id,
-          organization_id: newUser.organization_id,
-          role: newUser.role
-        }]);
+        .insert([newUser]);
 
-      if (dashboardUserError) throw dashboardUserError;
+      if (error) throw error;
 
       setShowUserModal(false);
-      setNewUser({ email: '', role: 'user', organization_id: '' });
+      setNewUser({ name: '', email: '', role: 'user', organization_id: '' });
       await fetchDashboardUsers();
     } catch (err) {
       console.error('Error adding user:', err);
@@ -142,90 +112,61 @@ export function UserOrgManagement() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      {/* Organizations Section */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold flex items-center">
-            <Building2 className="w-5 h-5 mr-2" />
-            Organizations
-          </h2>
-          <button
-            onClick={() => setShowOrgModal(true)}
-            className="flex items-center px-3 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
-            aria-label="Add Organization"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Organization
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Name</th>
-                <th className="text-left py-2">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {organizations.map((org) => (
-                <tr key={org.id} className="border-b">
-                  <td className="py-2">{org.name}</td>
-                  <td className="py-2">{org.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div className="flex justify-between items-center mb-6">
+      {/* Organization Management */}
+      <div className="flex items-center space-x-4">
+        <button
+          onClick={() => setShowOrgModal(true)}
+          className="flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          aria-label="Add Organization"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Organization
+        </button>
+        <button
+          onClick={() => setShowOrgListModal(true)}
+          className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          aria-label="View Organizations"
+        >
+          <Building2 className="w-4 h-4 mr-2" />
+          View Organizations
+        </button>
       </div>
 
-      {/* Users Section */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold flex items-center">
-            <Users className="w-5 h-5 mr-2" />
-            Users
-          </h2>
-          <button
-            onClick={() => setShowUserModal(true)}
-            className="flex items-center px-3 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
-            aria-label="Add User"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add User
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Name</th>
-                <th className="text-left py-2">Email</th>
-                <th className="text-left py-2">Role</th>
-                <th className="text-left py-2">Organization</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboardUsers.map((user) => (
-                <tr key={user.id} className="border-b">
-                  <td className="py-2">{user.name || 'N/A'}</td>
-                  <td className="py-2">{user.email}</td>
-                  <td className="py-2">{user.role}</td>
-                  <td className="py-2">
-                    {organizations.find(org => org.id === user.organization_id)?.name}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* User Management */}
+      <div className="flex items-center space-x-4">
+        <button
+          onClick={() => setShowUserModal(true)}
+          className="flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+          aria-label="Add User"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add User
+        </button>
+        <button
+          onClick={() => setShowUserListModal(true)}
+          className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          aria-label="View Users"
+        >
+          <Users className="w-4 h-4 mr-2" />
+          View Users
+        </button>
       </div>
 
       {/* Add Organization Modal */}
       {showOrgModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Add Organization</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add Organization</h3>
+              <button
+                onClick={() => setShowOrgModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleAddOrg}>
               <div className="mb-4">
                 <label htmlFor="org-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -277,10 +218,33 @@ export function UserOrgManagement() {
 
       {/* Add User Modal */}
       {showUserModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Add User</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add User</h3>
+              <button
+                onClick={() => setShowUserModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleAddUser}>
+              <div className="mb-4">
+                <label htmlFor="user-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  id="user-name"
+                  type="text"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                  placeholder="Enter user name"
+                />
+              </div>
               <div className="mb-4">
                 <label htmlFor="user-email" className="block text-sm font-medium text-gray-700 mb-1">
                   Email
@@ -346,6 +310,86 @@ export function UserOrgManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Organizations Modal */}
+      {showOrgListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Organizations</h3>
+              <button
+                onClick={() => setShowOrgListModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Name</th>
+                    <th className="text-left py-2">Description</th>
+                    <th className="text-left py-2">Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizations.map((org) => (
+                    <tr key={org.id} className="border-b">
+                      <td className="py-2">{org.name}</td>
+                      <td className="py-2">{org.description}</td>
+                      <td className="py-2">{new Date(org.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Users Modal */}
+      {showUserListModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Users</h3>
+              <button
+                onClick={() => setShowUserListModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Name</th>
+                    <th className="text-left py-2">Email</th>
+                    <th className="text-left py-2">Role</th>
+                    <th className="text-left py-2">Organization</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboardUsers.map((user) => (
+                    <tr key={user.id} className="border-b">
+                      <td className="py-2">{user.name}</td>
+                      <td className="py-2">{user.email}</td>
+                      <td className="py-2">{user.role}</td>
+                      <td className="py-2">
+                        {organizations.find(org => org.id === user.organization_id)?.name}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

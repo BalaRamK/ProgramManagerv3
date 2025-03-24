@@ -25,21 +25,7 @@ import { SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { supabase } from '../lib/supabase';
-
-interface Milestone {
-  id: string;
-  program_id: string;
-  title: string;
-  description: string;
-  due_date: string;
-  status: 'not-started' | 'in-progress' | 'completed' | 'at-risk' | 'delayed';
-  owner: string;
-  progress: number;
-  tasks: Task[];
-  dependencies: string[];
-  comments: Comment[];
-  resources: Resource[];
-}
+import { milestoneService, Milestone } from '../lib/milestoneService';
 
 interface Task {
   id: string;
@@ -106,9 +92,9 @@ const initialMilestones: Milestone[] = [
     progress: 100,
     tasks: [],
     dependencies: [],
-    comments: [],
     resources: [],
-    program_id: 'p1'
+    program_id: 'p1',
+    user_id: ''
   },
   {
     id: 'm2',
@@ -120,9 +106,9 @@ const initialMilestones: Milestone[] = [
     progress: 60,
     tasks: [],
     dependencies: ['m1'],
-    comments: [],
     resources: [],
-    program_id: 'p1'
+    program_id: 'p1',
+    user_id: ''
   }
 ];
 
@@ -190,6 +176,7 @@ interface MilestoneDetailViewProps {
 function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: MilestoneDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedMilestone, setEditedMilestone] = useState<Milestone>(milestone);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -199,9 +186,39 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
     }));
   };
 
-  const handleSave = () => {
-    onEdit(editedMilestone);
-    setIsEditing(false); // Exit edit mode
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      const updatedMilestone = await milestoneService.updateMilestone(editedMilestone.id, {
+        title: editedMilestone.title,
+        description: editedMilestone.description,
+        due_date: editedMilestone.due_date,
+        status: editedMilestone.status,
+        owner: editedMilestone.owner,
+        progress: editedMilestone.progress,
+        tasks: editedMilestone.tasks,
+        dependencies: editedMilestone.dependencies,
+        resources: editedMilestone.resources
+      });
+      onEdit(updatedMilestone);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving milestone:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      await milestoneService.deleteMilestone(milestone.id);
+      onDelete(milestone.id);
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -229,45 +246,47 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
               {isEditing ? (
                 <>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Title</h3>
+                    <label htmlFor="milestone-title" className="block text-sm font-medium text-gray-700">Title</label>
                     <input
                       type="text"
                       id="milestone-title"
                       name="title"
                       value={editedMilestone.title}
                       onChange={handleChange}
-                      className="mt-2 p-2 border border-gray-300 rounded"
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      placeholder="Enter milestone title"
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Description</h3>
+                    <label htmlFor="milestone-description" className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
                       id="milestone-description"
                       name="description"
                       value={editedMilestone.description}
                       onChange={handleChange}
-                      className="mt-2 p-2 border border-gray-300 rounded"
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      placeholder="Enter milestone description"
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
+                    <label htmlFor="milestone-due-date" className="block text-sm font-medium text-gray-700">Due Date</label>
                     <input
                       type="date"
                       id="milestone-due-date"
                       name="due_date"
                       value={editedMilestone.due_date}
                       onChange={handleChange}
-                      className="mt-2 p-2 border border-gray-300 rounded"
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                    <label htmlFor="milestone-status" className="block text-sm font-medium text-gray-700">Status</label>
                     <select
                       id="milestone-status"
                       name="status"
                       value={editedMilestone.status}
                       onChange={handleChange}
-                      className="mt-2 p-2 border border-gray-300 rounded"
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
                     >
                       <option value="not-started">Not Started</option>
                       <option value="in-progress">In Progress</option>
@@ -275,6 +294,31 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       <option value="at-risk">At Risk</option>
                       <option value="delayed">Delayed</option>
                     </select>
+                  </div>
+                  <div>
+                    <label htmlFor="milestone-owner" className="block text-sm font-medium text-gray-700">Owner</label>
+                    <input
+                      type="text"
+                      id="milestone-owner"
+                      name="owner"
+                      value={editedMilestone.owner}
+                      onChange={handleChange}
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      placeholder="Enter milestone owner"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="milestone-progress" className="block text-sm font-medium text-gray-700">Progress</label>
+                    <input
+                      type="number"
+                      id="milestone-progress"
+                      name="progress"
+                      value={editedMilestone.progress}
+                      onChange={handleChange}
+                      min="0"
+                      max="100"
+                      className="mt-2 p-2 border border-gray-300 rounded w-full"
+                    />
                   </div>
                 </>
               ) : (
@@ -291,6 +335,46 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                     <h3 className="text-sm font-medium text-gray-500">Status</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.status.replace('-', ' ')}</p>
                   </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Owner</h3>
+                    <p className="mt-2 text-sm text-gray-900">{milestone.owner}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Progress</h3>
+                    <p className="mt-2 text-sm text-gray-900">{milestone.progress}%</p>
+                  </div>
+                  {milestone.tasks && milestone.tasks.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Tasks</h3>
+                      <ul className="mt-2 space-y-1">
+                        {milestone.tasks.map((task, index) => (
+                          <li key={index} className="text-sm text-gray-900">
+                            {task.title} - {task.completed ? 'Completed' : 'Pending'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {milestone.dependencies && milestone.dependencies.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Dependencies</h3>
+                      <ul className="mt-2 space-y-1">
+                        {milestone.dependencies.map((dep, index) => (
+                          <li key={index} className="text-sm text-gray-900">{dep}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {milestone.resources && milestone.resources.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500">Resources</h3>
+                      <ul className="mt-2 space-y-1">
+                        {milestone.resources.map((resource, index) => (
+                          <li key={index} className="text-sm text-gray-900">{resource.title}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -301,14 +385,15 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
               {isEditing ? (
                 <button
                   onClick={handleSave}
-                  className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50"
                   aria-label="Save milestone"
                 >
-                  Save
+                  {loading ? 'Saving...' : 'Save'}
                 </button>
               ) : (
                 <button
-                  onClick={() => setIsEditing(true)} // Switch to edit mode
+                  onClick={() => setIsEditing(true)}
                   className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
                   aria-label="Edit milestone"
                 >
@@ -316,11 +401,12 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                 </button>
               )}
               <button
-                onClick={() => onDelete(milestone.id)}
-                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50"
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 aria-label="Delete milestone"
               >
-                Delete
+                {loading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
@@ -367,28 +453,33 @@ function ProgramDetailView({ program, onClose, onEdit, onDelete }: { program: Pr
               {isEditing ? (
                 <>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Name</h3>
+                    <label htmlFor="program-name" className="block text-sm font-medium text-gray-700">Name</label>
                     <input
                       type="text"
+                      id="program-name"
                       name="name"
                       value={editedProgram.name}
                       onChange={handleChange}
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      placeholder="Enter program name"
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Description</h3>
+                    <label htmlFor="program-description" className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
+                      id="program-description"
                       name="description"
                       value={editedProgram.description}
                       onChange={handleChange}
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      placeholder="Enter program description"
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Start Date</h3>
+                    <label htmlFor="program-start-date" className="block text-sm font-medium text-gray-700">Start Date</label>
                     <input
                       type="date"
+                      id="program-start-date"
                       name="start_date"
                       value={editedProgram.start_date}
                       onChange={handleChange}
@@ -396,13 +487,15 @@ function ProgramDetailView({ program, onClose, onEdit, onDelete }: { program: Pr
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">End Date</h3>
+                    <label htmlFor="program-end-date" className="block text-sm font-medium text-gray-700">End Date</label>
                     <input
                       type="date"
+                      id="program-end-date"
                       name="end_date"
                       value={editedProgram.end_date}
                       onChange={handleChange}
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
+                      title="Program end date"
                     />
                   </div>
                 </>
@@ -470,12 +563,12 @@ export function Roadmap() {
     description: '',
     due_date: format(new Date(), 'yyyy-MM-dd'),
     status: 'not-started',
-    owner: 'Assign Owner',
+    owner: 'Unassigned',
     progress: 0,
     tasks: [],
     dependencies: [],
-    comments: [],
-    resources: []
+    resources: [],
+    user_id: ''
   });
   const [startMonth, setStartMonth] = useState<Date | null>(null);
   const [endMonth, setEndMonth] = useState<Date | null>(null);
@@ -581,17 +674,26 @@ export function Roadmap() {
   };
 
   const handleMilestoneDelete = async (milestoneId: string) => {
-    const { error } = await supabase
-      .from('milestones')
-      .delete()
-      .eq('id', milestoneId);
+    try {
+      // Get the program_id before deleting the milestone
+      const milestone = milestones.find(m => m.id === milestoneId);
+      if (!milestone) return;
 
-    if (error) {
-      console.error('Error deleting milestone:', error);
-    } else {
-      setMilestones(milestones.filter(m => m.id !== milestoneId));
+      await milestoneService.deleteMilestone(milestoneId);
+      
+      // Fetch updated milestones for this program
+      const updatedMilestones = await milestoneService.getMilestonesByProgram(milestone.program_id);
+      
+      // Update the milestones state by replacing milestones for this program
+      const otherMilestones = milestones.filter(m => m.program_id !== milestone.program_id);
+      const allMilestones = [...otherMilestones, ...updatedMilestones];
+      
+      setMilestones(allMilestones);
+      setFilteredMilestones(allMilestones);
       setShowDetailView(false);
       setSelectedMilestone(null);
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
     }
   };
 
@@ -619,7 +721,7 @@ export function Roadmap() {
     console.log('isAddingMilestone set to true'); // Log to confirm state change
   };
 
-  const handleMilestoneChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleMilestoneChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setNewMilestone(prev => ({
       ...prev,
@@ -628,29 +730,50 @@ export function Roadmap() {
   };
 
   const handleSubmitMilestone = async () => {
-    const { error } = await supabase
-      .from('milestones')
-      .insert([newMilestone]);
+    try {
+      const milestoneData = {
+        program_id: newMilestone.program_id,
+        title: newMilestone.title,
+        description: newMilestone.description,
+        due_date: newMilestone.due_date,
+        status: newMilestone.status,
+        owner: newMilestone.owner,
+        progress: newMilestone.progress,
+        tasks: newMilestone.tasks,
+        dependencies: newMilestone.dependencies,
+        resources: newMilestone.resources
+      };
 
-    if (error) {
-      console.error('Error adding milestone:', error);
-    } else {
-      setMilestones([...milestones, { ...newMilestone, id: `m${Date.now()}` }]); // Update local state
-      setIsAddingMilestone(false); // Close the form
-      setNewMilestone({ // Reset the new milestone state
+      const newMilestoneData = await milestoneService.createMilestone(milestoneData);
+      
+      // Fetch updated milestones for this program
+      const updatedMilestones = await milestoneService.getMilestonesByProgram(newMilestone.program_id);
+      
+      // Update the milestones state by replacing milestones for this program
+      const otherMilestones = milestones.filter(m => m.program_id !== newMilestone.program_id);
+      const allMilestones = [...otherMilestones, ...updatedMilestones];
+      
+      setMilestones(allMilestones);
+      setFilteredMilestones(allMilestones);
+      setIsAddingMilestone(false);
+      
+      // Reset the new milestone form
+      setNewMilestone({
         id: '',
         program_id: '',
         title: '',
         description: '',
         due_date: format(new Date(), 'yyyy-MM-dd'),
         status: 'not-started',
-        owner: 'Assign Owner',
+        owner: 'Unassigned',
         progress: 0,
         tasks: [],
         dependencies: [],
-        comments: [],
-        resources: []
+        resources: [],
+        user_id: ''
       });
+    } catch (err) {
+      console.error('Error in handleSubmitMilestone:', err);
     }
   };
 
@@ -690,32 +813,64 @@ export function Roadmap() {
 
   // Fetch programs and milestones from Supabase
   useEffect(() => {
-    const fetchPrograms = async () => {
-      const { data: programsData, error: programsError } = await supabase
-        .from('programs')
-        .select('*');
-      if (programsData) {
-        setPrograms(programsData);
-      }
-      if (programsError) {
-        console.error('Error fetching programs:', programsError);
+    const fetchData = async () => {
+      try {
+        // Get the current user's ID
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('Error getting user:', userError);
+          return;
+        }
+
+        // Clear existing data when user changes
+        setPrograms([]);
+        setMilestones([]);
+
+        // Fetch programs for the current user
+        const { data: programsData, error: programsError } = await supabase
+          .from('programs')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (programsError) {
+          console.error('Error fetching programs:', programsError);
+        } else if (programsData) {
+          console.log('Fetched programs for user:', user.id, programsData);
+          setPrograms(programsData);
+
+          // Fetch milestones for each program
+          const allMilestones = [];
+          for (const program of programsData) {
+            const programMilestones = await milestoneService.getMilestonesByProgram(program.id);
+            allMilestones.push(...programMilestones);
+          }
+          console.log('Fetched all milestones:', allMilestones);
+          setMilestones(allMilestones);
+          setFilteredMilestones(allMilestones);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
       }
     };
 
-    const fetchMilestones = async () => {
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select('*');
-      if (milestonesData) {
-        setMilestones(milestonesData);
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchData();
+      } else if (event === 'SIGNED_OUT') {
+        setPrograms([]);
+        setMilestones([]);
       }
-      if (milestonesError) {
-        console.error('Error fetching milestones:', milestonesError);
-      }
-    };
+    });
 
-    fetchPrograms();
-    fetchMilestones();
+    // Initial fetch
+    fetchData();
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Add this function in the Roadmap component
@@ -747,74 +902,169 @@ export function Roadmap() {
 
   // Update the handleSubmitProgram function
   const handleSubmitProgram = async () => {
-    // Ensure organization_id and user_id are valid UUIDs
-    if (!newProgram.organization_id || !newProgram.user_id) {
-      console.error('Organization ID and User ID must be provided.');
-      return; // Prevent submission if IDs are not valid
-    }
+    try {
+      // Get the current user's ID
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user || !user.email) {
+        console.error('Error getting user:', userError);
+        return;
+      }
 
-    const { error } = await supabase
-      .from('programs')
-      .insert([{
-        organization_id: newProgram.organization_id,
-        user_id: newProgram.user_id,
-        name: newProgram.name,
-        description: newProgram.description,
-        start_date: newProgram.start_date,
-        end_date: newProgram.end_date,
-        created_at: newProgram.created_at // Optional, as Supabase can handle this too
-      }]);
+      // Get the user's organization or create one if it doesn't exist
+      let orgId;
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-    if (error) {
-      console.error('Error adding program:', error);
-    } else {
-      setPrograms([...programs, newProgram]); // Update local state
-      setIsAddingProgram(false); // Close the form
-      setNewProgram({ // Reset the new program state
-        id: '', // This can be omitted
-        organization_id: '',
-        user_id: '',
-        name: '',
-        description: '',
-        start_date: format(new Date(), 'yyyy-MM-dd'),
-        end_date: format(new Date(), 'yyyy-MM-dd'),
-        created_at: format(new Date(), 'yyyy-MM-dd') // Optional
-      });
+      if (orgError && orgError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error('Error getting organization:', orgError);
+        return;
+      }
+
+      if (!orgData) {
+        // Create a new organization for the user
+        const { data: newOrg, error: createOrgError } = await supabase
+          .from('organizations')
+          .insert([{
+            name: `${user.email}'s Organization`,
+            user_id: user.id
+          }])
+          .select()
+          .single();
+
+        if (createOrgError) {
+          console.error('Error creating organization:', createOrgError);
+          return;
+        }
+
+        orgId = newOrg.id;
+      } else {
+        orgId = orgData.id;
+      }
+
+      // Create a new user record if it doesn't exist
+      const { data: userData, error: userDataError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+
+      if (userDataError && userDataError.code !== 'PGRST116') {
+        console.error('Error getting user data:', userDataError);
+        return;
+      }
+
+      if (!userData) {
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert([{
+            name: user.email.split('@')[0],
+            email: user.email,
+            organization_id: orgId
+          }]);
+
+        if (createUserError) {
+          console.error('Error creating user:', createUserError);
+          return;
+        }
+      }
+
+      // Insert the new program
+      const { error } = await supabase
+        .from('programs')
+        .insert([{
+          organization_id: orgId,
+          user_id: user.id,
+          name: newProgram.name,
+          description: newProgram.description,
+          start_date: newProgram.start_date,
+          end_date: newProgram.end_date,
+          created_at: newProgram.created_at
+        }]);
+
+      if (error) {
+        console.error('Error adding program:', error);
+      } else {
+        setPrograms([...programs, { ...newProgram, id: `p${Date.now()}` }]);
+        setIsAddingProgram(false);
+        setNewProgram({
+          id: '',
+          organization_id: '',
+          user_id: '',
+          name: '',
+          description: '',
+          start_date: format(new Date(), 'yyyy-MM-dd'),
+          end_date: format(new Date(), 'yyyy-MM-dd'),
+          created_at: format(new Date(), 'yyyy-MM-dd')
+        });
+      }
+    } catch (err) {
+      console.error('Error in handleSubmitProgram:', err);
     }
   };
 
   // Fetch organizations and users from Supabase
   useEffect(() => {
-    const fetchOrganizations = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('user_id', userData.user.id); // Filter by user_id
-      if (orgData) {
-        setOrganizations(orgData);
-      }
-      if (orgError) {
-        console.error('Error fetching organizations:', orgError);
+    const fetchOrganizationsAndUsers = async () => {
+      try {
+        // Get the current user's ID
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('Error getting user:', userError);
+          return;
+        }
+
+        // Fetch organizations for the current user
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (orgError) {
+          console.error('Error fetching organizations:', orgError);
+        } else if (orgData) {
+          console.log('Fetched organizations for user:', user.id, orgData);
+          setOrganizations(orgData);
+        }
+
+        // Fetch users for the current user's organization
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('organization_id', orgData?.[0]?.id); // Use the first organization's ID
+
+        if (usersError) {
+          console.error('Error fetching users:', usersError);
+        } else if (usersData) {
+          console.log('Fetched users for organization:', orgData?.[0]?.id, usersData);
+          setUsers(usersData);
+        }
+      } catch (err) {
+        console.error('Error fetching organizations and users:', err);
       }
     };
 
-    const fetchUsers = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: usersData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('organization_id', userData.user.organization_id); // Filter by organization_id
-      if (usersData) {
-        setUsers(usersData);
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchOrganizationsAndUsers();
+      } else if (event === 'SIGNED_OUT') {
+        setOrganizations([]);
+        setUsers([]);
       }
-      if (userError) {
-        console.error('Error fetching users:', userError);
-      }
-    };
+    });
 
-    fetchOrganizations();
-    fetchUsers();
+    // Initial fetch
+    fetchOrganizationsAndUsers();
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleProgramEdit = async (updatedProgram: Program) => {
@@ -859,17 +1109,19 @@ export function Roadmap() {
           <div className="flex items-center justify-between mt-2">
             <div className="flex space-x-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start Month</label>
+                <label htmlFor="start-month" className="block text-sm font-medium text-gray-700">Start Month</label>
                 <input
                   type="month"
+                  id="start-month"
                   onChange={(e) => setStartMonth(new Date(e.target.value))}
                   className="mt-1 p-2 border border-gray-300 rounded"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">End Month</label>
+                <label htmlFor="end-month" className="block text-sm font-medium text-gray-700">End Month</label>
                 <input
                   type="month"
+                  id="end-month"
                   onChange={(e) => setEndMonth(new Date(e.target.value))}
                   className="mt-1 p-2 border border-gray-300 rounded"
                 />
@@ -967,7 +1219,7 @@ export function Roadmap() {
             <div className="bg-white rounded-lg shadow-lg p-6 w-96">
               <h3 className="text-lg font-medium mb-4">Add New Milestone</h3>
               <div>
-                <label className="block text-sm font-medium text-gray-700" htmlFor="new-milestone-title">Title</label>
+                <label htmlFor="new-milestone-title" className="block text-sm font-medium text-gray-700">Title</label>
                 <input
                   type="text"
                   id="new-milestone-title"
@@ -979,7 +1231,7 @@ export function Roadmap() {
                 />
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700" htmlFor="new-milestone-description">Description</label>
+                <label htmlFor="new-milestone-description" className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   id="new-milestone-description"
                   name="description"
@@ -990,7 +1242,7 @@ export function Roadmap() {
                 />
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700" htmlFor="new-milestone-due-date">Due Date</label>
+                <label htmlFor="new-milestone-due-date" className="block text-sm font-medium text-gray-700">Due Date</label>
                 <input
                   type="date"
                   id="new-milestone-due-date"
@@ -1001,7 +1253,7 @@ export function Roadmap() {
                 />
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700" htmlFor="new-milestone-status">Status</label>
+                <label htmlFor="new-milestone-status" className="block text-sm font-medium text-gray-700">Status</label>
                 <select
                   id="new-milestone-status"
                   name="status"
@@ -1077,7 +1329,7 @@ export function Roadmap() {
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
             <h3 className="text-lg font-medium mb-4">Add New Program</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700" htmlFor="new-program-name">Name</label>
+              <label htmlFor="new-program-name" className="block text-sm font-medium text-gray-700">Name</label>
               <input
                 type="text"
                 id="new-program-name"
@@ -1089,7 +1341,7 @@ export function Roadmap() {
               />
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700" htmlFor="new-program-description">Description</label>
+              <label htmlFor="new-program-description" className="block text-sm font-medium text-gray-700">Description</label>
               <textarea
                 id="new-program-description"
                 name="description"
@@ -1100,7 +1352,7 @@ export function Roadmap() {
               />
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700" htmlFor="new-program-start-date">Start Date</label>
+              <label htmlFor="new-program-start-date" className="block text-sm font-medium text-gray-700">Start Date</label>
               <input
                 type="date"
                 id="new-program-start-date"
@@ -1111,7 +1363,7 @@ export function Roadmap() {
               />
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700" htmlFor="new-program-end-date">End Date</label>
+              <label htmlFor="new-program-end-date" className="block text-sm font-medium text-gray-700">End Date</label>
               <input
                 type="date"
                 id="new-program-end-date"
@@ -1120,36 +1372,6 @@ export function Roadmap() {
                 onChange={(e) => setNewProgram({ ...newProgram, end_date: e.target.value })}
                 className="mt-1 p-2 border border-gray-300 rounded w-full"
               />
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700" htmlFor="organization-select">Organization</label>
-              <select
-                id="organization-select"
-                name="organization_id"
-                value={newProgram.organization_id}
-                onChange={(e) => setNewProgram({ ...newProgram, organization_id: e.target.value })}
-                className="mt-1 p-2 border border-gray-300 rounded w-full"
-              >
-                <option value="">Select Organization</option>
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700" htmlFor="user-select">User</label>
-              <select
-                id="user-select"
-                name="user_id"
-                value={newProgram.user_id}
-                onChange={(e) => setNewProgram({ ...newProgram, user_id: e.target.value })}
-                className="mt-1 p-2 border border-gray-300 rounded w-full"
-              >
-                <option value="">Select User</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-              </select>
             </div>
             <div className="mt-4 flex justify-end">
               <button

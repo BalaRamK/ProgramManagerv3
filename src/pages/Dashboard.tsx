@@ -34,35 +34,112 @@ import { supabase } from '../lib/supabase';
 import { UserOrgManagement } from '../components/UserOrgManagement';
 import { Navbar } from '../components/Navbar';
 
+interface ProgramStats {
+  budget: {
+    total: number;
+    spent: number;
+    remaining: number;
+  };
+  tasks: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    notStarted: number;
+  };
+  risks: {
+    total: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  timeline: {
+    daysElapsed: number;
+    daysRemaining: number;
+    percentComplete: number;
+  };
+  programs?: any[];
+  milestones?: any[];
+  kpis?: any[];
+}
+
 export function Dashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [programStats, setProgramStats] = useState<ProgramStats>({
+    budget: { total: 1250000, spent: 450000, remaining: 800000 },
+    tasks: { total: 124, completed: 78, inProgress: 32, notStarted: 14 },
+    risks: { total: 18, high: 3, medium: 7, low: 8 },
+    timeline: { daysElapsed: 45, daysRemaining: 75, percentComplete: 38 }
+  });
   
   // Check if user is logged in
   useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
         navigate('/login');
-      } else {
-        setUser(data.user);
+        return;
       }
+      setUser(user);
       setLoading(false);
+      
+      // Fetch user-specific data
+      await fetchUserData(user.id);
     };
     
     checkUser();
   }, [navigate]);
 
-  // Simulated data for dashboard components
-  const programStats = {
-    budget: { total: 1250000, spent: 450000, remaining: 800000 },
-    tasks: { total: 124, completed: 78, inProgress: 32, notStarted: 14 },
-    risks: { total: 18, high: 3, medium: 7, low: 8 },
-    timeline: { daysElapsed: 45, daysRemaining: 75, percentComplete: 38 }
+  const fetchUserData = async (userId: string) => {
+    try {
+      // Fetch programs for the current user
+      const { data: programs, error: programsError } = await supabase
+        .from('programs')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (programsError) {
+        console.error('Error fetching programs:', programsError);
+        return;
+      }
+
+      // Fetch milestones for the current user
+      const { data: milestones, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (milestonesError) {
+        console.error('Error fetching milestones:', milestonesError);
+        return;
+      }
+
+      // Fetch KPIs for the current user
+      const { data: kpis, error: kpisError } = await supabase
+        .from('kpis')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (kpisError) {
+        console.error('Error fetching KPIs:', kpisError);
+        return;
+      }
+
+      // Update state with user-specific data
+      setProgramStats({
+        ...programStats,
+        programs: programs || [],
+        milestones: milestones || [],
+        kpis: kpis || []
+      });
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+    }
   };
-  
+
+  // Simulated data for dashboard components
   const recentActivities = [
     { id: 1, type: 'task', title: 'Updated roadmap for Q3', user: 'Alex Johnson', time: '2 hours ago' },
     { id: 2, type: 'risk', title: 'New risk identified: Supply chain delay', user: 'Maria Garcia', time: '4 hours ago' },
@@ -566,10 +643,15 @@ export function Dashboard() {
                   </h2>
                   <p className="text-gray-600 mb-6">This page is under construction.</p>
                   <button 
-                    className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      activeTab === 'overview'
+                        ? 'bg-violet-100 text-violet-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                    title="View Overview"
                     onClick={() => setActiveTab('overview')}
                   >
-                    Return to Dashboard
+                    Overview
                   </button>
                 </div>
               </div>

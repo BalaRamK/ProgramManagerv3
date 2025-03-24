@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS public.user_logs (
 -- Create RLS policies for user_logs
 ALTER TABLE public.user_logs ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Admin can read all logs" ON public.user_logs;
+DROP POLICY IF EXISTS "Admin can insert logs" ON public.user_logs;
+
 -- Allow admin to read all logs
 CREATE POLICY "Admin can read all logs" ON public.user_logs
     FOR SELECT
@@ -59,6 +63,12 @@ CREATE TRIGGER update_storage_usage_trigger
 
 -- Create RLS policies for storage
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing storage policies if they exist
+DROP POLICY IF EXISTS "Users can read their own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can insert their own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own files" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own files" ON storage.objects;
 
 -- Allow users to read their own files
 CREATE POLICY "Users can read their own files" ON storage.objects

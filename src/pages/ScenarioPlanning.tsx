@@ -4,28 +4,51 @@ import { format, parseISO } from 'date-fns'; // Ensure date-fns is imported for 
 
 // Define types for risks and scenarios
 interface Risk {
-  id: string; // Assuming UUID is stored as a string
+  id: string;
+  program_id: string | null;
+  milestone_id: string | null;
   description: string;
-  probability: number; // Assuming probability is a number between 0 and 1
-  impact: number; // Assuming impact is a numeric value
+  probability: number;
+  impact: number;
   mitigation_strategy: string;
-  updates: string[]; // New property for updates
-  update_date: string; // New property for the date of the latest update
+  update: string[];
+  update_date: string;
+  program_name?: string;
+  organization_name?: string;
+  milestone_title?: string;
+}
+
+interface Program {
+  id: string;
+  name: string;
 }
 
 interface Scenario {
-  id: string; // Assuming UUID is stored as a string
+  id: string;
   title: string;
   description: string;
 }
 
 export function ScenarioPlanning() {
-  const [budget, setBudget] = useState<number>(100); // Explicitly define type
-  const [timeline, setTimeline] = useState<number>(12); // Explicitly define type
-  const [risks, setRisks] = useState<Risk[]>([]); // Define type for risks
-  const [scenarios, setScenarios] = useState<Scenario[]>([]); // Define type for scenarios
-  const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null); // State for selected risk
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // State for modal visibility
+  const [budget, setBudget] = useState<number>(100);
+  const [timeline, setTimeline] = useState<number>(12);
+  const [risks, setRisks] = useState<Risk[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddingRisk, setIsAddingRisk] = useState<boolean>(false);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [newRisk, setNewRisk] = useState<Risk>({
+    id: '',
+    program_id: null,
+    milestone_id: null,
+    description: '',
+    probability: 0.5,
+    impact: 5,
+    mitigation_strategy: '',
+    update: [],
+    update_date: format(new Date(), 'yyyy-MM-dd')
+  });
 
   // Function to simulate scenario impact
   const simulateScenario = (budget: number, timeline: number): string => {
@@ -40,28 +63,30 @@ export function ScenarioPlanning() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      // Fetch risks
+      console.log('Current user:', userData.user.id); // Debug log
+
+      // Fetch risks from risk_view
       const { data: risksData, error: risksError } = await supabase
-        .from('risks')
-        .select('*')
-        .eq('user_id', userData.user.id);
-      if (risksData) {
-        setRisks(risksData);
-      }
+        .from('risk_view')
+        .select('*');
+
       if (risksError) {
         console.error('Error fetching risks:', risksError);
+      } else {
+        console.log('Fetched risks:', risksData); // Debug log
+        setRisks(risksData || []);
       }
 
-      // Fetch scenarios
-      const { data: scenariosData, error: scenariosError } = await supabase
-        .from('scenarios')
-        .select('*')
-        .eq('user_id', userData.user.id);
-      if (scenariosData) {
-        setScenarios(scenariosData);
-      }
-      if (scenariosError) {
-        console.error('Error fetching scenarios:', scenariosError);
+      // Fetch programs for the dropdown
+      const { data: programsData, error: programsError } = await supabase
+        .from('programs')
+        .select('*');
+
+      if (programsError) {
+        console.error('Error fetching programs:', programsError);
+      } else {
+        console.log('Fetched programs:', programsData); // Debug log
+        setPrograms(programsData || []);
       }
     };
 
@@ -93,9 +118,14 @@ export function ScenarioPlanning() {
       const { error } = await supabase
         .from('risks')
         .update({
+          program_id: selectedRisk.program_id,
+          milestone_id: selectedRisk.milestone_id,
+          description: selectedRisk.description,
           probability: selectedRisk.probability,
           impact: selectedRisk.impact,
           mitigation_strategy: selectedRisk.mitigation_strategy,
+          update: selectedRisk.update,
+          update_date: selectedRisk.update_date
         })
         .eq('id', selectedRisk.id);
 
@@ -103,7 +133,9 @@ export function ScenarioPlanning() {
         console.error('Error updating risk:', error);
       } else {
         // Refresh risks after update
-        const { data: risksData } = await supabase.from('risks').select('*');
+        const { data: risksData } = await supabase
+          .from('risk_view')
+          .select('*');
         if (risksData) {
           setRisks(risksData);
         }
@@ -120,12 +152,66 @@ export function ScenarioPlanning() {
         console.error('Error deleting risk:', error);
       } else {
         // Refresh risks after deletion
-        const { data: risksData } = await supabase.from('risks').select('*');
+        const { data: risksData } = await supabase.from('risk_view').select('*');
         if (risksData) {
           setRisks(risksData);
         }
         closeModal();
       }
+    }
+  };
+
+  // Add new function to handle risk submission
+  const handleSubmitRisk = async () => {
+    try {
+      if (!newRisk.program_id) {
+        console.error('Program ID is required');
+        return;
+      }
+
+      const { data: newRiskData, error } = await supabase
+        .from('risks')
+        .insert([{
+          program_id: newRisk.program_id,
+          milestone_id: newRisk.milestone_id,
+          description: newRisk.description,
+          probability: newRisk.probability,
+          impact: newRisk.impact,
+          mitigation_strategy: newRisk.mitigation_strategy,
+          update: newRisk.update,
+          update_date: newRisk.update_date
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding risk:', error);
+      } else {
+        // Fetch the complete risk data with program and milestone info
+        const { data: updatedRisk } = await supabase
+          .from('risk_view')
+          .select('*')
+          .eq('id', newRiskData.id)
+          .single();
+
+        if (updatedRisk) {
+          setRisks([...risks, updatedRisk]);
+          setIsAddingRisk(false);
+          setNewRisk({
+            id: '',
+            program_id: null,
+            milestone_id: null,
+            description: '',
+            probability: 0.5,
+            impact: 5,
+            mitigation_strategy: '',
+            update: [],
+            update_date: format(new Date(), 'yyyy-MM-dd')
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error in handleSubmitRisk:', err);
     }
   };
 
@@ -189,10 +275,20 @@ export function ScenarioPlanning() {
 
         {/* Risk Cards */}
         <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Risk Cards</h2>
-          <p className="text-gray-700 mb-4">
-            Manage and analyze program risks with detailed risk cards. View probability, impact, and mitigation actions for each risk.
-          </p>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Risk Cards</h2>
+              <p className="text-gray-700">
+                Manage and analyze program risks with detailed risk cards. View probability, impact, and mitigation actions for each risk.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddingRisk(true)}
+              className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
+            >
+              + Add Risk
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {risks.map(risk => (
               <div key={risk.id} className={`border rounded-md p-4 ${getRiskColor(risk.probability)}`} onClick={() => handleCardClick(risk)}>
@@ -262,8 +358,8 @@ export function ScenarioPlanning() {
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Latest Updates</h3>
                 <textarea 
-                  value={selectedRisk.updates ? selectedRisk.updates.join(', ') : ''}
-                  onChange={(e) => setSelectedRisk({ ...selectedRisk, updates: e.target.value.split(',').map(update => update.trim()) })}
+                  value={selectedRisk.update ? selectedRisk.update.join(', ') : ''}
+                  onChange={(e) => setSelectedRisk({ ...selectedRisk, update: e.target.value.split(',').map(update => update.trim()) })}
                   className="mt-1 p-2 border border-gray-300 rounded w-full"
                   placeholder="Enter latest updates (comma separated)"
                 />
@@ -275,6 +371,8 @@ export function ScenarioPlanning() {
                   value={selectedRisk.update_date ? format(parseISO(selectedRisk.update_date), 'yyyy-MM-dd') : ''}
                   onChange={(e) => setSelectedRisk({ ...selectedRisk, update_date: e.target.value })} 
                   className="mt-1 p-2 border border-gray-300 rounded w-full"
+                  title="Select update date"
+                  placeholder="Select date"
                 />
               </div>
             </div>
@@ -282,6 +380,90 @@ export function ScenarioPlanning() {
               <button onClick={handleUpdateRisk} className="bg-blue-500 text-white rounded px-4 py-2">Update</button>
               <button onClick={handleDeleteRisk} className="bg-red-500 text-white rounded px-4 py-2 ml-2">Delete</button>
               <button onClick={closeModal} className="bg-gray-300 rounded px-4 py-2 ml-2">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Risk Modal */}
+      {isAddingRisk && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+            <h3 className="text-lg font-medium mb-4">Add New Risk</h3>
+            <div className="mb-4">
+              <label htmlFor="program-select" className="block text-sm font-medium text-gray-700">Program</label>
+              <select
+                id="program-select"
+                value={newRisk.program_id || ''}
+                onChange={(e) => setNewRisk({ ...newRisk, program_id: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+              >
+                <option value="">Select a program</option>
+                {programs.map(program => (
+                  <option key={program.id} value={program.id}>{program.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="new-risk-description" className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                id="new-risk-description"
+                value={newRisk.description}
+                onChange={(e) => setNewRisk({ ...newRisk, description: e.target.value })}
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+                placeholder="Enter risk description"
+              />
+            </div>
+            <div className="mt-4">
+              <label htmlFor="new-risk-probability" className="block text-sm font-medium text-gray-700">Probability (0-1)</label>
+              <input
+                type="number"
+                id="new-risk-probability"
+                value={newRisk.probability}
+                onChange={(e) => setNewRisk({ ...newRisk, probability: parseFloat(e.target.value) })}
+                min="0"
+                max="1"
+                step="0.1"
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+                title="Risk probability between 0 and 1"
+                placeholder="Enter probability (0-1)"
+              />
+            </div>
+            <div className="mt-4">
+              <label htmlFor="new-risk-impact" className="block text-sm font-medium text-gray-700">Impact (1-10)</label>
+              <input
+                type="number"
+                id="new-risk-impact"
+                value={newRisk.impact}
+                onChange={(e) => setNewRisk({ ...newRisk, impact: parseInt(e.target.value) })}
+                min="1"
+                max="10"
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+              />
+            </div>
+            <div className="mt-4">
+              <label htmlFor="new-risk-mitigation" className="block text-sm font-medium text-gray-700">Mitigation Strategy</label>
+              <textarea
+                id="new-risk-mitigation"
+                value={newRisk.mitigation_strategy}
+                onChange={(e) => setNewRisk({ ...newRisk, mitigation_strategy: e.target.value })}
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+                placeholder="Enter mitigation strategy"
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleSubmitRisk}
+                className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
+              >
+                Save Risk
+              </button>
+              <button
+                onClick={() => setIsAddingRisk(false)}
+                className="ml-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

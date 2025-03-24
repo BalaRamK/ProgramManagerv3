@@ -65,9 +65,15 @@ CREATE TRIGGER on_auth_user_created
 -- Enable email confirmations in auth.users
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
+-- Create auth.config table if it doesn't exist
+CREATE TABLE IF NOT EXISTS auth.config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 -- Update auth settings
 BEGIN;
-  INSERT INTO auth.config (key, value)
+INSERT INTO auth.config (key, value)
   VALUES
     ('SECURITY_EMAIL_CONFIRMATION_REQUIRED', 'true'),
     ('MAILER_SECURE_EMAIL_CHANGE_ENABLED', 'true'),

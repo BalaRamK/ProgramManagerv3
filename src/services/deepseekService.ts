@@ -1,4 +1,4 @@
-const DEEPSEEK_API_KEY = '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';
+const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 interface DeepseekResponse {

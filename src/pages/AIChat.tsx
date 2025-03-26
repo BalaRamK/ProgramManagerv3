@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Send, Loader2, Trash2, Menu } from 'lucide-react';
+import { PlusCircle, Send, Loader2, Trash2, Menu, ArrowLeft } from 'lucide-react';
 import { generateResponse, loadChats, saveChat, updateChat, deleteChat, type Message, type Chat } from '../services/geminiService';
 import { supabase } from '../lib/supabase';
 import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 export default function AIChat() {
+  const navigate = useNavigate();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [input, setInput] = useState('');
@@ -115,144 +117,158 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar */}
-      <div className="w-[260px] bg-gray-50 border-r border-gray-200 flex flex-col">
-        {/* New Chat Button */}
-        <div className="p-4">
-          <button
-            onClick={createNewChat}
-            className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <PlusCircle size={20} />
-            New Chat
-          </button>
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto px-2">
-          {chats.map(chat => (
-            <div
-              key={chat.id}
-              className={`group flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer mb-1 ${
-                currentChat?.id === chat.id 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => setCurrentChat(chat)}
-            >
-              <Menu size={18} />
-              <span className="flex-1 truncate font-medium">{chat.title}</span>
-              {currentChat?.id === chat.id && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setChatToDelete(chat.id);
-                    setShowDeleteModal(true);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-600"
-                  aria-label="Delete chat"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="flex flex-col h-screen bg-white">
+      {/* Navigation Bar */}
+      <div className="h-16 border-b border-gray-200 flex items-center px-4 bg-white">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft size={20} />
+          <span className="font-medium">Back to Dashboard</span>
+        </button>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
-          {currentChat ? (
-            <div className="max-w-4xl mx-auto py-6 px-4">
-              {currentChat.messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`mb-6 ${
-                    message.role === 'assistant' 
-                      ? 'bg-gray-50 border border-gray-100 rounded-lg p-4' 
-                      : ''
-                  }`}
-                >
-                  <div className="flex gap-4">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      message.role === 'assistant' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-700 text-white'
-                    }`}>
-                      {message.role === 'assistant' ? 'AI' : 'U'}
-                    </div>
-                    <div className="flex-1">
-                      <ReactMarkdown
-                        components={{
-                          p: ({ children }) => <p className="text-gray-700 mb-4 last:mb-0">{children}</p>,
-                          code: ({ children }) => (
-                            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded">{children}</code>
-                          ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center p-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-8">Welcome to ProgramMatrix AI</h1>
-              <div className="max-w-3xl w-full grid grid-cols-2 gap-6">
-                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Program Analysis</h2>
-                  <p className="text-gray-600">Get insights about your program performance and metrics</p>
-                </button>
-                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Risk Assessment</h2>
-                  <p className="text-gray-600">Analyze potential risks and get mitigation strategies</p>
-                </button>
-                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Resource Planning</h2>
-                  <p className="text-gray-600">Optimize resource allocation and scheduling</p>
-                </button>
-                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Budget Forecasting</h2>
-                  <p className="text-gray-600">Get budget predictions and recommendations</p>
-                </button>
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-[260px] bg-gray-50 border-r border-gray-200 flex flex-col">
+          {/* New Chat Button */}
+          <div className="p-4">
+            <button
+              onClick={createNewChat}
+              className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <PlusCircle size={20} />
+              New Chat
+            </button>
+          </div>
+
+          {/* Chat List */}
+          <div className="flex-1 overflow-y-auto px-2">
+            {chats.map(chat => (
+              <div
+                key={chat.id}
+                className={`group flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer mb-1 ${
+                  currentChat?.id === chat.id 
+                    ? 'bg-blue-50 text-blue-700' 
+                    : 'hover:bg-gray-100 text-gray-700'
+                }`}
+                onClick={() => setCurrentChat(chat)}
+              >
+                <Menu size={18} />
+                <span className="flex-1 truncate font-medium">{chat.title}</span>
+                {currentChat?.id === chat.id && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatToDelete(chat.id);
+                      setShowDeleteModal(true);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-600"
+                    aria-label="Delete chat"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
-        {/* Input Form */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="max-w-4xl mx-auto">
-            <form onSubmit={handleSubmit} className="relative">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Message ProgramMatrix AI..."
-                className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <Send size={20} />
-                )}
-              </button>
-            </form>
-            <p className="text-xs text-center text-gray-500 mt-2">
-              ProgramMatrix AI can make mistakes. Consider checking important information.
-            </p>
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col bg-white">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto">
+            {currentChat ? (
+              <div className="max-w-4xl mx-auto py-6 px-4">
+                {currentChat.messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`mb-6 ${
+                      message.role === 'assistant' 
+                        ? 'bg-gray-50 border border-gray-100 rounded-lg p-4' 
+                        : ''
+                    }`}
+                  >
+                    <div className="flex gap-4">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        message.role === 'assistant' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-gray-700 text-white'
+                      }`}>
+                        {message.role === 'assistant' ? 'AI' : 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="text-gray-700 mb-4 last:mb-0">{children}</p>,
+                            code: ({ children }) => (
+                              <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded">{children}</code>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center p-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-8">Welcome to ProgramMatrix AI</h1>
+                <div className="max-w-3xl w-full grid grid-cols-2 gap-6">
+                  <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Program Analysis</h2>
+                    <p className="text-gray-600">Get insights about your program performance and metrics</p>
+                  </button>
+                  <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Risk Assessment</h2>
+                    <p className="text-gray-600">Analyze potential risks and get mitigation strategies</p>
+                  </button>
+                  <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Resource Planning</h2>
+                    <p className="text-gray-600">Optimize resource allocation and scheduling</p>
+                  </button>
+                  <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Budget Forecasting</h2>
+                    <p className="text-gray-600">Get budget predictions and recommendations</p>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Form */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="max-w-4xl mx-auto">
+              <form onSubmit={handleSubmit} className="relative">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Message ProgramMatrix AI..."
+                  className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <Send size={20} />
+                  )}
+                </button>
+              </form>
+              <p className="text-xs text-center text-gray-500 mt-2">
+                ProgramMatrix AI can make mistakes. Consider checking important information.
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Send, Loader2, Trash2, Search, Settings, Menu, Mic, ChevronDown } from 'lucide-react';
+import { PlusCircle, Send, Loader2, Trash2, Menu } from 'lucide-react';
 import { generateResponse, loadChats, saveChat, updateChat, deleteChat, type Message, type Chat } from '../services/geminiService';
 import { supabase } from '../lib/supabase';
 import ReactMarkdown from 'react-markdown';
@@ -115,32 +115,34 @@ export default function AIChat() {
   };
 
   return (
-    <div className="flex h-screen bg-[#343541]">
+    <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <div className="w-[260px] bg-[#202123] text-gray-200 flex flex-col">
+      <div className="w-[260px] bg-gray-50 border-r border-gray-200 flex flex-col">
         {/* New Chat Button */}
-        <div className="p-2">
+        <div className="p-4">
           <button
             onClick={createNewChat}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-700 border border-gray-600 text-sm"
+            className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            <PlusCircle size={16} />
-            New chat
+            <PlusCircle size={20} />
+            New Chat
           </button>
         </div>
 
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        <div className="flex-1 overflow-y-auto px-2">
           {chats.map(chat => (
             <div
               key={chat.id}
-              className={`group flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm ${
-                currentChat?.id === chat.id ? 'bg-gray-700' : 'hover:bg-gray-700'
+              className={`group flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer mb-1 ${
+                currentChat?.id === chat.id 
+                  ? 'bg-blue-50 text-blue-700' 
+                  : 'hover:bg-gray-100 text-gray-700'
               }`}
               onClick={() => setCurrentChat(chat)}
             >
-              <Menu size={16} />
-              <span className="flex-1 truncate">{chat.title}</span>
+              <Menu size={18} />
+              <span className="flex-1 truncate font-medium">{chat.title}</span>
               {currentChat?.id === chat.id && (
                 <button
                   onClick={(e) => {
@@ -148,60 +150,46 @@ export default function AIChat() {
                     setChatToDelete(chat.id);
                     setShowDeleteModal(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-600"
                   aria-label="Delete chat"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               )}
             </div>
           ))}
         </div>
-
-        {/* User Section */}
-        <div className="p-2 border-t border-gray-600">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-700 text-sm">
-            <Settings size={16} />
-            Settings
-          </button>
-        </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="h-12 border-b border-gray-600 flex items-center px-4 text-gray-200">
-          <div className="flex-1">
-            {currentChat ? currentChat.title : 'New Chat'}
-          </div>
-          <button className="p-2 hover:bg-gray-700 rounded-md" title="Chat options">
-            <ChevronDown size={16} />
-          </button>
-        </div>
-
+      <div className="flex-1 flex flex-col bg-white">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
           {currentChat ? (
-            <div className="max-w-3xl mx-auto py-4 px-4">
+            <div className="max-w-4xl mx-auto py-6 px-4">
               {currentChat.messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`py-6 ${
-                    message.role === 'assistant' ? 'bg-[#444654]' : ''
+                  className={`mb-6 ${
+                    message.role === 'assistant' 
+                      ? 'bg-gray-50 border border-gray-100 rounded-lg p-4' 
+                      : ''
                   }`}
                 >
-                  <div className="max-w-3xl mx-auto flex gap-6 px-4">
-                    <div className={`w-8 h-8 rounded-sm flex items-center justify-center ${
-                      message.role === 'assistant' ? 'bg-green-600' : 'bg-gray-600'
+                  <div className="flex gap-4">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      message.role === 'assistant' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-700 text-white'
                     }`}>
                       {message.role === 'assistant' ? 'AI' : 'U'}
                     </div>
-                    <div className="flex-1 text-gray-200">
+                    <div className="flex-1">
                       <ReactMarkdown
                         components={{
-                          p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+                          p: ({ children }) => <p className="text-gray-700 mb-4 last:mb-0">{children}</p>,
                           code: ({ children }) => (
-                            <code className="bg-gray-800 rounded px-1 py-0.5">{children}</code>
+                            <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded">{children}</code>
                           ),
                         }}
                       >
@@ -214,66 +202,53 @@ export default function AIChat() {
               <div ref={messagesEndRef} />
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <h1 className="text-4xl font-bold mb-8">ProgramMatrix AI</h1>
-              <div className="max-w-2xl w-full space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <button className="p-6 rounded-lg border border-gray-600 hover:bg-gray-700">
-                    <h2 className="text-lg font-medium mb-2">Program Analysis</h2>
-                    <p className="text-sm">Get insights about your program performance and metrics</p>
-                  </button>
-                  <button className="p-6 rounded-lg border border-gray-600 hover:bg-gray-700">
-                    <h2 className="text-lg font-medium mb-2">Risk Assessment</h2>
-                    <p className="text-sm">Analyze potential risks and get mitigation strategies</p>
-                  </button>
-                  <button className="p-6 rounded-lg border border-gray-600 hover:bg-gray-700">
-                    <h2 className="text-lg font-medium mb-2">Resource Planning</h2>
-                    <p className="text-sm">Optimize resource allocation and scheduling</p>
-                  </button>
-                  <button className="p-6 rounded-lg border border-gray-600 hover:bg-gray-700">
-                    <h2 className="text-lg font-medium mb-2">Budget Forecasting</h2>
-                    <p className="text-sm">Get budget predictions and recommendations</p>
-                  </button>
-                </div>
+            <div className="h-full flex flex-col items-center justify-center p-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-8">Welcome to ProgramMatrix AI</h1>
+              <div className="max-w-3xl w-full grid grid-cols-2 gap-6">
+                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Program Analysis</h2>
+                  <p className="text-gray-600">Get insights about your program performance and metrics</p>
+                </button>
+                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Risk Assessment</h2>
+                  <p className="text-gray-600">Analyze potential risks and get mitigation strategies</p>
+                </button>
+                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Resource Planning</h2>
+                  <p className="text-gray-600">Optimize resource allocation and scheduling</p>
+                </button>
+                <button className="flex flex-col p-6 rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all group">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600">Budget Forecasting</h2>
+                  <p className="text-gray-600">Get budget predictions and recommendations</p>
+                </button>
               </div>
             </div>
           )}
         </div>
 
         {/* Input Form */}
-        <div className="border-t border-gray-600 p-4">
-          <div className="max-w-3xl mx-auto">
+        <div className="border-t border-gray-200 p-4">
+          <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSubmit} className="relative">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Message ProgramMatrix AI..."
-                className="w-full bg-[#40414f] text-gray-200 rounded-lg pl-4 pr-12 py-3 focus:outline-none"
+                className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900"
                 disabled={isLoading}
               />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {!isLoading && (
-                  <button
-                    type="button"
-                    className="p-1 hover:bg-gray-600 rounded-md text-gray-400"
-                    aria-label="Voice input"
-                  >
-                    <Mic size={20} />
-                  </button>
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Send size={20} />
                 )}
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="p-1 hover:bg-gray-600 rounded-md text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : (
-                    <Send size={20} />
-                  )}
-                </button>
-              </div>
+              </button>
             </form>
             <p className="text-xs text-center text-gray-500 mt-2">
               ProgramMatrix AI can make mistakes. Consider checking important information.
@@ -284,10 +259,10 @@ export default function AIChat() {
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#2a2b32] rounded-lg p-6 max-w-sm w-full text-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Delete Chat</h3>
-            <p className="text-gray-400 mb-6">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Delete Chat</h3>
+            <p className="text-gray-600 mb-6">
               Are you sure you want to delete this chat? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
@@ -296,13 +271,13 @@ export default function AIChat() {
                   setShowDeleteModal(false);
                   setChatToDelete(null);
                 }}
-                className="px-4 py-2 hover:bg-gray-700 rounded"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 Cancel
               </button>
               <button
                 onClick={() => chatToDelete && handleDeleteChat(chatToDelete)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Delete
               </button>

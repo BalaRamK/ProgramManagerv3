@@ -253,7 +253,7 @@ export function Dashboard() {
             <a 
               href="#" 
               className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-              onClick={(e) => { e.preventDefault(); setActiveTab('insights'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('insights'); navigate('/custom-insights'); }}
             >
               <Zap className="h-5 w-5 mr-3 text-gray-500" />
               <span>Custom Insights</span>

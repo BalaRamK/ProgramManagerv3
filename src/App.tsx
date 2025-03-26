@@ -232,7 +232,7 @@ function HomePage() {
                     Get Started
                   </Link>
                   <button
-                    onClick={() => window.open('https://github.com/yourusername/yourrepo', '_blank')}
+                    onClick={() => window.open('https://programmatrix.lemonsqueezy.com/buy/22cc536d-8562-49d1-853f-bbb4a7b997ab', '_blank')}
                     className="block w-full bg-green-100 text-green-700 text-center py-3 px-4 rounded-lg hover:bg-green-200 transition-colors duration-200"
                   >
                     Contribute
@@ -244,7 +244,7 @@ function HomePage() {
             {/* Pro Plan */}
             <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
               <div className="absolute top-0 right-0 bg-violet-600 text-white px-4 py-1 rounded-bl-lg text-sm font-medium">
-                Popular
+                Coming Soon...
               </div>
               <div className="p-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Pro</h3>
@@ -285,7 +285,7 @@ function HomePage() {
                   to="/signup?plan=pro"
                   className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200"
                 >
-                  Get Started
+                  Coming Soon...
                 </Link>
               </div>
             </div>

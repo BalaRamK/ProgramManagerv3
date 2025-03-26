@@ -82,30 +82,30 @@ interface User {
 
 // Sample data for milestones (this should be fetched from a separate milestones table)
 const initialMilestones: Milestone[] = [
-  {
-    id: 'm1',
-    title: 'Requirements Gathering',
-    description: 'Collect and analyze project requirements',
+      {
+        id: 'm1',
+        title: 'Requirements Gathering',
+        description: 'Collect and analyze project requirements',
     due_date: '2025-01-15',
-    status: 'completed',
-    owner: 'John Doe',
-    progress: 100,
+        status: 'completed',
+        owner: 'John Doe',
+        progress: 100,
     tasks: [],
-    dependencies: [],
+        dependencies: [],
     resources: [],
     program_id: 'p1',
     user_id: ''
-  },
-  {
-    id: 'm2',
-    title: 'Design Phase',
-    description: 'Create detailed design specifications',
+      },
+      {
+        id: 'm2',
+        title: 'Design Phase',
+        description: 'Create detailed design specifications',
     due_date: '2025-03-01',
-    status: 'in-progress',
-    owner: 'Jane Smith',
-    progress: 60,
+        status: 'in-progress',
+        owner: 'Jane Smith',
+        progress: 60,
     tasks: [],
-    dependencies: ['m1'],
+        dependencies: ['m1'],
     resources: [],
     program_id: 'p1',
     user_id: ''
@@ -245,7 +245,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
             <div className="space-y-6">
               {isEditing ? (
                 <>
-                  <div>
+              <div>
                     <label htmlFor="milestone-title" className="block text-sm font-medium text-gray-700">Title</label>
                     <input
                       type="text"
@@ -256,8 +256,8 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                       placeholder="Enter milestone title"
                     />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label htmlFor="milestone-description" className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
                       id="milestone-description"
@@ -267,7 +267,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                       placeholder="Enter milestone description"
                     />
-                  </div>
+                </div>
                   <div>
                     <label htmlFor="milestone-due-date" className="block text-sm font-medium text-gray-700">Due Date</label>
                     <input
@@ -278,8 +278,8 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       onChange={handleChange}
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                     />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label htmlFor="milestone-status" className="block text-sm font-medium text-gray-700">Status</label>
                     <select
                       id="milestone-status"
@@ -297,7 +297,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                   </div>
                   <div>
                     <label htmlFor="milestone-owner" className="block text-sm font-medium text-gray-700">Owner</label>
-                    <input
+                      <input
                       type="text"
                       id="milestone-owner"
                       name="owner"
@@ -306,7 +306,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                       placeholder="Enter milestone owner"
                     />
-                  </div>
+                    </div>
                   <div>
                     <label htmlFor="milestone-progress" className="block text-sm font-medium text-gray-700">Progress</label>
                     <input
@@ -319,22 +319,22 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       max="100"
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                     />
-                  </div>
+                </div>
                 </>
               ) : (
                 <>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Description</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.description}</p>
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
                     <p className="mt-2 text-sm text-gray-900">{format(parseISO(milestone.due_date), 'MMM d, yyyy')}</p>
-                  </div>
+                      </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Status</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.status.replace('-', ' ')}</p>
-                  </div>
+                    </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Owner</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.owner}</p>
@@ -353,7 +353,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                           </li>
                         ))}
                       </ul>
-                    </div>
+                </div>
                   )}
                   {milestone.dependencies && milestone.dependencies.length > 0 && (
                     <div>
@@ -363,7 +363,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                           <li key={index} className="text-sm text-gray-900">{dep}</li>
                         ))}
                       </ul>
-                    </div>
+              </div>
                   )}
                   {milestone.resources && milestone.resources.length > 0 && (
                     <div>
@@ -383,7 +383,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex space-x-3">
               {isEditing ? (
-                <button
+              <button
                   onClick={handleSave}
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50"
@@ -394,11 +394,11 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
+                className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
                   aria-label="Edit milestone"
-                >
-                  Edit
-                </button>
+              >
+                Edit
+              </button>
               )}
               <button
                 onClick={handleDelete}
@@ -764,11 +764,11 @@ export function Roadmap() {
         title: '',
         description: '',
         due_date: format(new Date(), 'yyyy-MM-dd'),
-        status: 'not-started',
+      status: 'not-started',
         owner: 'Unassigned',
-        progress: 0,
-        tasks: [],
-        dependencies: [],
+      progress: 0,
+      tasks: [],
+      dependencies: [],
         resources: [],
         user_id: ''
       });
@@ -1158,17 +1158,17 @@ export function Roadmap() {
                       ) : (
                         <ChevronDown className="h-5 w-5 text-gray-600" />
                       )}
-                    </button>
+              </button>
                   </div>
                   <div className="flex items-center">
-                    <button
+              <button
                       onClick={() => handleAddMilestoneForProgram(program.id)} // Add milestone button
                       className="ml-4 px-2 py-1 bg-violet-600 text-white rounded-md hover:bg-violet-700"
                       aria-label="Add Milestone"
                     >
                       Add Milestone
-                    </button>
-                    <button
+              </button>
+              <button
                       onClick={() => {
                         console.log('View Program Details clicked for:', program); // Debug log
                         setSelectedProgram(program);
@@ -1178,39 +1178,39 @@ export function Roadmap() {
                       aria-label="View Program Details"
                     >
                       View Program Details
-                    </button>
-                  </div>
-                </div>
+              </button>
+            </div>
+          </div>
                 {/* Display Start and End Dates */}
                 <div className="mt-2 text-sm text-gray-600">
                   <p>Start Date: {format(parseISO(program.start_date), 'MMM d, yyyy')}</p>
                   <p>End Date: {format(parseISO(program.end_date), 'MMM d, yyyy')}</p>
-                </div>
+        </div>
                 {expandedPrograms.has(program.id) && (
                   <div className="ml-4">
-                    <DndContext
-                      sensors={sensors}
-                      onDragEnd={handleDragEnd}
-                    >
+          <DndContext
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+          >
                       <SortableContext items={filteredMilestones.map(m => m.id)}>
-                        <div className="space-y-4">
+                      <div className="space-y-4">
                           {filteredMilestones.filter(m => m.program_id === program.id).map(milestone => (
-                            <SortableMilestone
-                              key={milestone.id}
-                              milestone={milestone}
-                              onClick={() => handleMilestoneClick(milestone)}
-                              isSelected={selectedMilestone?.id === milestone.id}
-                              showDetailView={showDetailView}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
+                          <SortableMilestone
+                            key={milestone.id}
+                            milestone={milestone}
+                            onClick={() => handleMilestoneClick(milestone)}
+                            isSelected={selectedMilestone?.id === milestone.id}
+                            showDetailView={showDetailView}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
                     </DndContext>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
         </div>
 
         {/* Add Milestone Form as a Modal */}
@@ -1317,7 +1317,7 @@ export function Roadmap() {
         <div className="zoom-controls">
           <button onClick={handleZoomIn}>Zoom In</button>
           <button onClick={handleZoomOut}>Zoom Out</button>
-        </div>
+      </div>
         {renderTooltips()}
 
         {/* Test Color Coding */}

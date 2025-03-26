@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { format, parseISO } from 'date-fns'; // Ensure date-fns is imported for formatting dates
+import { Download, Share2, Filter } from 'lucide-react';
+import { ScenarioAnalysisAssistant } from '../components/ScenarioAnalysisAssistant';
 
 // Define types for risks and scenarios
 interface Risk {
@@ -49,6 +51,15 @@ export function ScenarioPlanning() {
     update: [],
     update_date: format(new Date(), 'yyyy-MM-dd')
   });
+
+  // Add program context for AI assistant
+  const programContext = {
+    id: programs[0]?.id, // Use the first program's ID or handle multiple programs
+    budget,
+    timeline,
+    resources: [], // TODO: Add actual resources data
+    risks
+  };
 
   // Function to simulate scenario impact
   const simulateScenario = (budget: number, timeline: number): string => {
@@ -223,86 +234,94 @@ export function ScenarioPlanning() {
           <p className="text-gray-600">Analyze scenarios and manage risks to optimize your program.</p>
         </div>
 
-        {/* What-If Simulation Tools */}
-        <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">What-If Simulation Tools</h2>
-          <p className="text-gray-700 mb-4">
-            Use interactive tools to simulate different scenarios by adjusting parameters and see the real-time impact on your program.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="mb-4">
-                <label htmlFor="budget-slider" className="block text-sm font-medium text-gray-700">Budget (%)</label>
-                <input
-                  type="range"
-                  id="budget-slider"
-                  min="50"
-                  max="150"
-                  step="10"
-                  value={budget}
-                  onChange={(e) => setBudget(parseInt(e.target.value, 10))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                />
-                <p className="text-sm text-gray-500 mt-1">Current Budget: {budget}%</p>
-              </div>
-              <div className="mb-4">
-                <label htmlFor="timeline-slider" className="block text-sm font-medium text-gray-700">Timeline (Months)</label>
-                <input
-                  type="range"
-                  id="timeline-slider"
-                  min="6"
-                  max="24"
-                  step="1"
-                  value={timeline}
-                  onChange={(e) => setTimeline(parseInt(e.target.value, 10))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                />
-                <p className="text-sm text-gray-500 mt-1">Current Timeline: {timeline} months</p>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-md font-semibold mb-2">Simulation Result</h3>
-              <div className="p-4 border rounded-md bg-gray-100">
-                <p className="text-gray-700">{simulationResult}</p>
-                {/* Placeholder for real-time visualization */}
-                <div className="mt-4 border p-2 rounded-md bg-white">
-                  <p className="text-gray-500 italic text-center">Visualization Placeholder</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* What-If Simulation Tools */}
+            <section className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold mb-4">What-If Simulation Tools</h2>
+              <p className="text-gray-700 mb-4">
+                Use interactive tools to simulate different scenarios by adjusting parameters and see the real-time impact on your program.
+              </p>
+              <div className="space-y-6">
+                <div>
+                  <div className="mb-4">
+                    <label htmlFor="budget-slider" className="block text-sm font-medium text-gray-700">Budget (%)</label>
+                    <input
+                      type="range"
+                      id="budget-slider"
+                      min="50"
+                      max="150"
+                      step="10"
+                      value={budget}
+                      onChange={(e) => setBudget(parseInt(e.target.value, 10))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Current Budget: {budget}%</p>
+                  </div>
+                  <div className="mb-4">
+                    <label htmlFor="timeline-slider" className="block text-sm font-medium text-gray-700">Timeline (Months)</label>
+                    <input
+                      type="range"
+                      id="timeline-slider"
+                      min="6"
+                      max="24"
+                      step="1"
+                      value={timeline}
+                      onChange={(e) => setTimeline(parseInt(e.target.value, 10))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Current Timeline: {timeline} months</p>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-md font-semibold mb-2">Simulation Result</h3>
+                  <div className="p-4 border rounded-md bg-gray-100">
+                    <p className="text-gray-700">{simulationResult}</p>
+                    <div className="mt-4 border p-2 rounded-md bg-white">
+                      <p className="text-gray-500 italic text-center">Visualization Placeholder</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        {/* Risk Cards */}
-        <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Risk Cards</h2>
-              <p className="text-gray-700">
-                Manage and analyze program risks with detailed risk cards. View probability, impact, and mitigation actions for each risk.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsAddingRisk(true)}
-              className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
-            >
-              + Add Risk
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {risks.map(risk => (
-              <div key={risk.id} className={`border rounded-md p-4 ${getRiskColor(risk.probability)}`} onClick={() => handleCardClick(risk)}>
-                <h3 className="text-md font-semibold">{risk.description}</h3>
-                <p className="text-sm text-gray-600">Probability: {risk.probability}</p>
-                <p className="text-sm text-gray-600">Impact: {risk.impact}</p>
-                <p className="text-sm text-gray-600">Mitigation Strategy: {risk.mitigation_strategy}</p>
+            {/* Risk Cards */}
+            <section className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Risk Cards</h2>
+                  <p className="text-gray-700">
+                    Manage and analyze program risks with detailed risk cards.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAddingRisk(true)}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700"
+                >
+                  + Add Risk
+                </button>
               </div>
-            ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {risks.map(risk => (
+                  <div key={risk.id} className={`border rounded-md p-4 ${getRiskColor(risk.probability)}`} onClick={() => handleCardClick(risk)}>
+                    <h3 className="text-md font-semibold">{risk.description}</h3>
+                    <p className="text-sm text-gray-600">Probability: {risk.probability}</p>
+                    <p className="text-sm text-gray-600">Impact: {risk.impact}</p>
+                    <p className="text-sm text-gray-600">Mitigation Strategy: {risk.mitigation_strategy}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
-        </section>
+
+          {/* AI Scenario Assistant */}
+          <div>
+            <ScenarioAnalysisAssistant programContext={programContext} />
+          </div>
+        </div>
 
         {/* Scenario Comparison */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
+        <section className="bg-white rounded-lg shadow-sm p-6 mt-6">
           <h2 className="text-lg font-semibold mb-4">Scenario Comparison</h2>
           <p className="text-gray-700 mb-4">
             Compare different simulated scenarios side-by-side to understand the trade-offs and make informed decisions.
@@ -312,7 +331,6 @@ export function ScenarioPlanning() {
               <div key={scenario.id} className="border rounded-md p-4">
                 <h3 className="text-md font-semibold">{scenario.title}</h3>
                 <p className="text-sm text-gray-600">{scenario.description}</p>
-                {/* Add scenario comparison details here */}
               </div>
             ))}
           </div>

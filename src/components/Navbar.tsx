@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 import {
   LayoutDashboard,
   Calendar,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export function Navbar() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -56,7 +57,19 @@ export function Navbar() {
                     <LayoutDashboard className="h-4 w-4 inline-block mr-1" />
                     Dashboard
                   </NavLink>
-                  
+                  <NavLink
+                    to="/ai-chat"
+                    className={({ isActive }) =>
+                      `px-3 py-2 rounded-md text-sm font-medium ${
+                        isActive
+                          ? 'bg-violet-100 text-violet-600'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`
+                    }
+                  >
+                    <MessageSquare className="h-4 w-4 inline-block mr-1" />
+                    AI Assistant
+                  </NavLink>
                 </div>
               </div>
             )}

@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Roadmap } from './pages/Roadmap';
 import { KpiFinancial } from './pages/KpiFinancial';
 import { ScenarioPlanning } from './pages/ScenarioPlanning';
+import AIChat from './pages/AIChat';
 import CommunicationLog from './pages/CommunicationLog';
 import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
@@ -14,7 +15,7 @@ import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
 import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
 import { supabase } from './lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import {
   BarChart3,
   Calendar,
@@ -485,6 +486,9 @@ function AdminRoute({ children }: AdminRouteProps) {
 }
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   return (
     <Router>
       <Routes>
@@ -532,6 +536,14 @@ function App() {
             <ProtectedRoute>
               <Navbar />
               <ScenarioPlanning />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-chat"
+          element={
+            <ProtectedRoute>
+              <AIChat />
             </ProtectedRoute>
           }
         />

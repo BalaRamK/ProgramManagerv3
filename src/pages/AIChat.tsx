@@ -19,18 +19,56 @@ export default function AIChat() {
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/login');
+          return;
+        }
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+
         setUserId(user.id);
-        loadChats(user.id).then(setChats).catch(error => {
-          console.error('Error loading chats:', error);
-          setError('Failed to load chats');
-        });
+        const { data: chats, error } = await supabase
+          .from('chats')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          if (error.code === 'PGRST301' || error.message.includes('JWT')) {
+            navigate('/login');
+            return;
+          }
+          throw error;
+        }
+
+        setChats(chats || []);
+      } catch (error) {
+        console.error('Error checking session:', error);
+        setError('Failed to load chats. Please try refreshing the page.');
       }
     };
-    getUser();
-  }, []);
+
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/login');
+      }
+    });
+
+    checkSession();
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -74,6 +112,13 @@ export default function AIChat() {
     setError(null);
 
     try {
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+
       const response = await generateResponse(updatedChat.messages, userId, currentChat.context);
       const assistantMessage: Message = {
         role: 'assistant',
@@ -87,7 +132,23 @@ export default function AIChat() {
         title: updatedChat.messages.length === 0 ? input.trim().slice(0, 30) : updatedChat.title,
       };
       setCurrentChat(finalChat);
-      await updateChat(finalChat);
+      
+      const { error: updateError } = await supabase
+        .from('chats')
+        .update({
+          title: finalChat.title,
+          messages: finalChat.messages,
+          context: finalChat.context
+        })
+        .eq('id', finalChat.id);
+
+      if (updateError) {
+        if (updateError.code === 'PGRST301' || updateError.message.includes('JWT')) {
+          navigate('/login');
+          return;
+        }
+        throw updateError;
+      }
       
       // Update chat list with new title
       setChats(prev => prev.map(chat => 
@@ -95,7 +156,7 @@ export default function AIChat() {
       ));
     } catch (error) {
       console.error('Error generating response:', error);
-      setError('Failed to generate response');
+      setError('Failed to generate response. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +164,26 @@ export default function AIChat() {
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      await deleteChat(chatId);
+      // Check session before making the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', chatId);
+
+      if (deleteError) {
+        if (deleteError.code === 'PGRST301' || deleteError.message.includes('JWT')) {
+          navigate('/login');
+          return;
+        }
+        throw deleteError;
+      }
+
       setChats(prev => prev.filter(chat => chat.id !== chatId));
       if (currentChat?.id === chatId) {
         setCurrentChat(null);
@@ -112,9 +192,37 @@ export default function AIChat() {
       setChatToDelete(null);
     } catch (error) {
       console.error('Error deleting chat:', error);
-      setError('Failed to delete chat');
+      setError('Failed to delete chat. Please try again.');
     }
   };
+
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen bg-white">
+        <div className="h-16 border-b border-gray-200 flex items-center px-4 bg-white">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft size={20} />
+            <span className="font-medium">Back to Dashboard</span>
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white">

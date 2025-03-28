@@ -1317,8 +1317,8 @@ const CommunicationLog = () => {
               <p className="text-sm text-gray-600">
                 Metrics: {report.data.metrics.length}
               </p>
-            </div>
-          ))}
+          </div>
+        ))}
         </div>
       </div>
     </div>

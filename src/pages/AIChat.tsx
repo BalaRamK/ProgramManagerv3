@@ -21,36 +21,46 @@ export default function AIChat() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
         if (!session) {
           navigate('/login');
           return;
         }
         
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        
         if (!user) {
           navigate('/login');
           return;
         }
 
         setUserId(user.id);
-        const { data: chats, error } = await supabase
+
+        // Fetch chats with proper error handling
+        const { data: chats, error: chatsError } = await supabase
           .from('chats')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          if (error.code === 'PGRST301' || error.message.includes('JWT')) {
+        if (chatsError) {
+          if (chatsError.code === 'PGRST301' || chatsError.message.includes('JWT')) {
             navigate('/login');
             return;
           }
-          throw error;
+          throw chatsError;
         }
 
         setChats(chats || []);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error checking session:', error);
+        if (error.message?.includes('JWT') || error.message?.includes('token')) {
+          navigate('/login');
+          return;
+        }
         setError('Failed to load chats. Please try refreshing the page.');
       }
     };
@@ -113,7 +123,9 @@ export default function AIChat() {
 
     try {
       // Check session before making the request
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      
       if (!session) {
         navigate('/login');
         return;
@@ -131,8 +143,8 @@ export default function AIChat() {
         messages: [...updatedChat.messages, assistantMessage],
         title: updatedChat.messages.length === 0 ? input.trim().slice(0, 30) : updatedChat.title,
       };
-      setCurrentChat(finalChat);
-      
+
+      // Update chat in Supabase
       const { error: updateError } = await supabase
         .from('chats')
         .update({
@@ -149,14 +161,20 @@ export default function AIChat() {
         }
         throw updateError;
       }
-      
-      // Update chat list with new title
+
+      setCurrentChat(finalChat);
       setChats(prev => prev.map(chat => 
         chat.id === finalChat.id ? finalChat : chat
       ));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating response:', error);
-      setError('Failed to generate response. Please try again.');
+      if (error.message?.includes('API key')) {
+        setError('AI service is currently unavailable. Please try again later.');
+      } else if (error.message?.includes('JWT') || error.message?.includes('token')) {
+        navigate('/login');
+      } else {
+        setError('Failed to generate response. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

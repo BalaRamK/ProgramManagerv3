@@ -28,7 +28,8 @@ import {
   User,
   Briefcase,
   Lightbulb,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserOrgManagement } from '../components/UserOrgManagement';
@@ -257,6 +258,14 @@ export function Dashboard() {
             >
               <Zap className="h-5 w-5 mr-3 text-gray-500" />
               <span>Custom Insights</span>
+            </a>
+            <a 
+              href="#" 
+              className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
+              onClick={(e) => { e.preventDefault(); navigate('/documentation'); }}
+            >
+              <BookOpen className="h-5 w-5 mr-3 text-gray-500" />
+              <span>Documentation</span>
             </a>
             
             <div className="px-4 py-2 mt-4">

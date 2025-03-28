@@ -12,6 +12,7 @@ import CommunicationLog from './pages/CommunicationLog';
 import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
 import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
+import Documentation from './pages/Documentation';
 import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
 import { supabase } from './lib/supabase';
@@ -580,6 +581,14 @@ function App() {
             <ProtectedRoute>
               <Navbar />
               <CustomInsights />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/documentation"
+          element={
+            <ProtectedRoute>
+              <Documentation />
             </ProtectedRoute>
           }
         />

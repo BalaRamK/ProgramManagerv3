@@ -17,6 +17,7 @@ import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
 import { supabase } from './lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { Toaster } from 'react-hot-toast';
 import {
   BarChart3,
   Calendar,
@@ -492,6 +493,7 @@ function App() {
 
   return (
     <Router>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<><Navbar /><HomePage /></>} />
         <Route path="/login" element={<><Navbar /><Login /></>} />

@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 export interface Milestone {
   id: string;
-  program_id: string;
+  goal_id: string;
   title: string;
   description: string;
   due_date: string;
@@ -18,7 +18,7 @@ export interface Milestone {
 }
 
 export interface CreateMilestoneInput {
-  program_id: string;
+  goal_id: string;
   title: string;
   description: string;
   due_date: string;
@@ -33,13 +33,60 @@ export interface CreateMilestoneInput {
 export const milestoneService = {
   // Create a new milestone
   async createMilestone(milestone: CreateMilestoneInput) {
+    // Validate goal_id
+    if (!milestone.goal_id || milestone.goal_id === 'undefined') {
+      const error = new Error('Invalid goal ID: must be a valid UUID');
+      console.error('Error creating milestone:', error);
+      throw error;
+    }
+    
+    // Get current user's ID
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error getting current user:', userError);
+      throw userError;
+    }
+    
+    const userId = userData.user?.id;
+    
+    if (!userId) {
+      throw new Error('No authenticated user found');
+    }
+    
+    console.log('Creating milestone with goal_id:', milestone.goal_id);
+    console.log('Current user ID:', userId);
+    
+    // First verify the goal_id belongs to the current user
+    const { data: goalData, error: goalError } = await supabase
+      .from('goals')
+      .select('id, user_id')
+      .eq('id', milestone.goal_id)
+      .single();
+      
+    if (goalError) {
+      console.error('Error verifying goal ownership:', goalError);
+      throw goalError;
+    }
+    
+    if (goalData.user_id !== userId) {
+      throw new Error('You do not have permission to add milestones to this goal');
+    }
+    
+    // Now create the milestone
     const { data, error } = await supabase
       .from('milestones')
       .insert([{
-        ...milestone,
-        owner: milestone.owner || 'Unassigned'
+        goal_id: milestone.goal_id,
+        title: milestone.title,
+        description: milestone.description,
+        due_date: milestone.due_date,
+        status: milestone.status,
+        owner: milestone.owner || 'Unassigned',
+        progress: milestone.progress || 0,
+        user_id: userId
       }])
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -83,10 +130,40 @@ export const milestoneService = {
 
   // Get milestones by program ID
   async getMilestonesByProgram(programId: string) {
+    const { data: goals, error: goalsError } = await supabase
+      .from('goals')
+      .select('id')
+      .eq('program_id', programId);
+
+    if (goalsError) {
+      console.error('Error fetching goals:', goalsError);
+      throw goalsError;
+    }
+
+    if (!goals || goals.length === 0) {
+      return [];
+    }
+
+    const goalIds = goals.map(g => g.id);
     const { data, error } = await supabase
-      .from('milestone_view')
-      .select('*')
-      .eq('program_id', programId)
+      .from('milestones')
+      .select(`
+        id,
+        goal_id,
+        title,
+        description,
+        due_date,
+        status,
+        owner,
+        progress,
+        tasks,
+        dependencies,
+        resources,
+        user_id,
+        created_at,
+        updated_at
+      `)
+      .in('goal_id', goalIds)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -94,7 +171,23 @@ export const milestoneService = {
       throw error;
     }
 
-    return data;
+    return data || [];
+  },
+
+  // Get milestones by goal
+  async getMilestonesByGoal(goalId: string) {
+    const { data, error } = await supabase
+      .from('milestones')
+      .select('*')
+      .eq('goal_id', goalId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error getting milestones by goal:', error);
+      throw error;
+    }
+
+    return data || [];
   },
 
   // Update a milestone

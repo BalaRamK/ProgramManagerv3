@@ -116,30 +116,30 @@ interface Goal {
 
 // Sample data for milestones (this should be fetched from a separate milestones table)
 const initialMilestones: Milestone[] = [
-  {
-    id: 'm1',
-    title: 'Requirements Gathering',
-    description: 'Collect and analyze project requirements',
+      {
+        id: 'm1',
+        title: 'Requirements Gathering',
+        description: 'Collect and analyze project requirements',
     due_date: '2025-01-15',
-    status: 'completed',
-    owner: 'John Doe',
-    progress: 100,
+        status: 'completed',
+        owner: 'John Doe',
+        progress: 100,
     tasks: [],
-    dependencies: [],
+        dependencies: [],
     resources: [],
     goal_id: 'g1',
     user_id: ''
-  },
-  {
-    id: 'm2',
-    title: 'Design Phase',
-    description: 'Create detailed design specifications',
+      },
+      {
+        id: 'm2',
+        title: 'Design Phase',
+        description: 'Create detailed design specifications',
     due_date: '2025-03-01',
-    status: 'in-progress',
-    owner: 'Jane Smith',
-    progress: 60,
+        status: 'in-progress',
+        owner: 'Jane Smith',
+        progress: 60,
     tasks: [],
-    dependencies: ['m1'],
+        dependencies: ['m1'],
     resources: [],
     goal_id: 'g1',
     user_id: ''
@@ -327,11 +327,19 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
         <div className="h-full flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <img 
+                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  alt="ProgramMatrix Logo" 
+                  className="h-6 w-auto mr-2" 
+                />
               <h2 className="text-lg font-semibold">{milestone.title}</h2>
+              </div>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-500"
                 aria-label="Close panel"
+                title="Close panel"
               >
                 <span className="sr-only">Close panel</span>
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -345,7 +353,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
             <div className="space-y-6">
               {isEditing ? (
                 <>
-                  <div>
+              <div>
                     <label htmlFor="milestone-title" className="block text-sm font-medium text-gray-700">Title</label>
                     <input
                       type="text"
@@ -356,8 +364,8 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                       placeholder="Enter milestone title"
                     />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label htmlFor="milestone-description" className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
                       id="milestone-description"
@@ -367,7 +375,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                       placeholder="Enter milestone description"
                     />
-                  </div>
+                </div>
                   <div>
                     <label htmlFor="milestone-due-date" className="block text-sm font-medium text-gray-700">Due Date</label>
                     <input
@@ -378,8 +386,8 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                       onChange={handleChange}
                       className="mt-2 p-2 border border-gray-300 rounded w-full"
                     />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <label htmlFor="milestone-status" className="block text-sm font-medium text-gray-700">Status</label>
                     <select
                       id="milestone-status"
@@ -426,14 +434,16 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Tasks</label>
-                    <div className="mt-2 space-y-2">
+                <div className="mt-2 space-y-2">
                       {editedMilestone.tasks && editedMilestone.tasks.map((task, index) => (
                         <div key={task.id || index} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
                             onChange={() => handleToggleTaskCompletion(task.id || '')}
-                            className="h-4 w-4 text-violet-600 rounded"
+                        className="h-4 w-4 text-violet-600 rounded"
+                            aria-label={`Task: ${task.title}`}
+                            title={`Toggle completion for: ${task.title}`}
                           />
                           <span className={`flex-1 ${task.completed ? 'line-through text-gray-400' : ''}`}>
                             {task.title}
@@ -442,13 +452,15 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                             type="button"
                             onClick={() => handleRemoveTaskFromMilestone(task.id || '')}
                             className="text-red-500 hover:text-red-700"
+                            aria-label={`Remove task: ${task.title}`}
+                            title={`Remove task: ${task.title}`}
                           >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
-                        </div>
-                      ))}
+                    </div>
+                  ))}
                       <div className="flex mt-2">
                         <input
                           type="text"
@@ -457,6 +469,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                           onChange={(e) => setNewTaskTitle(e.target.value)}
                           placeholder="Add a task"
                           className="flex-1 p-2 border border-gray-300 rounded-l"
+                          aria-label="New task title"
                         />
                         <button
                           type="button"
@@ -467,20 +480,20 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                         >
                           Add
                         </button>
-                      </div>
-                    </div>
+                </div>
+              </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div>
+              <div>
                     <h3 className="text-sm font-medium text-gray-500">Description</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.description}</p>
-                  </div>
+                      </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
                     <p className="mt-2 text-sm text-gray-900">{format(parseISO(milestone.due_date), 'MMM d, yyyy')}</p>
-                  </div>
+                    </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Status</h3>
                     <p className="mt-2 text-sm text-gray-900">{milestone.status.replace('-', ' ')}</p>
@@ -517,7 +530,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                     ) : (
                       <p className="mt-2 text-sm text-gray-500 italic">No tasks added</p>
                     )}
-                  </div>
+                </div>
                   {milestone.dependencies && milestone.dependencies.length > 0 && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Dependencies</h3>
@@ -526,7 +539,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
                           <li key={index} className="text-sm text-gray-900">{dep}</li>
                         ))}
                       </ul>
-                    </div>
+              </div>
                   )}
                 </>
               )}
@@ -536,7 +549,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex space-x-3">
               {isEditing ? (
-                <button
+              <button
                   onClick={handleSave}
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50"
@@ -547,11 +560,11 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
+                className="flex-1 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700"
                   aria-label="Edit milestone"
-                >
-                  Edit
-                </button>
+              >
+                Edit
+              </button>
               )}
               <button
                 onClick={handleDelete}
@@ -592,8 +605,20 @@ function ProgramDetailView({ program, onClose, onEdit, onDelete }: { program: Pr
         <div className="h-full flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{program.name}</h2>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-500" aria-label="Close panel">
+              <div className="flex items-center">
+                <img 
+                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  alt="ProgramMatrix Logo" 
+                  className="h-6 w-auto mr-2" 
+                />
+                <h2 className="text-lg font-semibold">{program.name}</h2>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="text-gray-400 hover:text-gray-500" 
+                aria-label="Close panel"
+                title="Close panel"
+              >
                 <span className="sr-only">Close panel</span>
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -724,7 +749,14 @@ function GoalModal({ programId, onClose, onSubmit }: GoalModalProps) {
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-        <h3 className="text-lg font-medium mb-4">Add New Goal</h3>
+        <div className="flex items-center mb-4">
+          <img 
+            src="/dist/assets/ProgramMatrix_logo.png" 
+            alt="ProgramMatrix Logo" 
+            className="h-6 w-auto mr-2" 
+          />
+          <h3 className="text-lg font-medium">Add New Goal</h3>
+        </div>
         <form onSubmit={handleSubmit}>
           <div>
             <label htmlFor="goal-name" className="block text-sm font-medium text-gray-700">Name</label>
@@ -1067,9 +1099,9 @@ export function Roadmap() {
         user_id: user?.id,
         tasks: [],
         dependencies: [],
-        resources: []
-      };
-
+      resources: []
+    };
+    
       console.log('Creating milestone with data:', milestoneData);
       
       const { data, error } = await milestoneService.createMilestone(milestoneData);
@@ -1701,8 +1733,17 @@ export function Roadmap() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
         <div className="mb-8">
+          <div className="flex items-center">
+            <img 
+              src="/dist/assets/ProgramMatrix_logo.png" 
+              alt="ProgramMatrix Logo" 
+              className="h-10 w-auto mr-3" 
+            />
+            <div>
           <h1 className="text-2xl font-bold text-gray-900">Program Roadmap</h1>
           <p className="text-gray-600">Strategic timeline and milestones for your program</p>
+            </div>
+          </div>
         </div>
 
         {/* Controls and Filters */}
@@ -1737,7 +1778,7 @@ export function Roadmap() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 mt-6">
                 <span className="text-sm font-medium text-gray-700">View:</span>
-                <button
+              <button
                   onClick={() => setViewType('step')}
                   className={`px-3 py-1 text-sm rounded-md ${
                     viewType === 'step' 
@@ -1746,8 +1787,8 @@ export function Roadmap() {
                   }`}
                 >
                   Step View
-                </button>
-                <button
+              </button>
+              <button
                   onClick={() => setViewType('gantt')}
                   className={`px-3 py-1 text-sm rounded-md ${
                     viewType === 'gantt' 
@@ -1756,7 +1797,7 @@ export function Roadmap() {
                   }`}
                 >
                   Gantt Chart
-                </button>
+              </button>
               </div>
               <button
                 onClick={() => setIsAddingProgram(true)}
@@ -1770,7 +1811,7 @@ export function Roadmap() {
 
         {/* Programs and Milestones View */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6">
+            <div className="p-6">
             {viewType === 'step' ? renderProgramHierarchy() : renderGanttChart()}
           </div>
         </div>
@@ -1779,7 +1820,14 @@ export function Roadmap() {
         {isAddingMilestone && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg shadow-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-medium mb-4">Add New Milestone</h3>
+              <div className="flex items-center mb-4">
+                <img 
+                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  alt="ProgramMatrix Logo" 
+                  className="h-6 w-auto mr-2" 
+                />
+                <h3 className="text-lg font-medium">Add New Milestone</h3>
+              </div>
               <form onSubmit={handleSubmitMilestone}>
                 <div>
                   <label htmlFor="new-milestone-title" className="block text-sm font-medium text-gray-700">Title</label>
@@ -1848,7 +1896,7 @@ export function Roadmap() {
                       <option key={user.id} value={user.email}>{user.name} ({user.email})</option>
                     ))}
                   </select>
-                </div>
+                      </div>
                 <div className="mt-4">
                   <label htmlFor="new-milestone-progress" className="block text-sm font-medium text-gray-700">Progress (%)</label>
                   <select
@@ -1862,9 +1910,9 @@ export function Roadmap() {
                       <option key={value} value={value}>{value}%</option>
                     ))}
                   </select>
-                </div>
+                  </div>
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700">Tasks</label>
+                  <label htmlFor="new-task-input" className="block text-sm font-medium text-gray-700">Tasks</label>
                   <div className="mt-2 space-y-2">
                     {newMilestone.tasks?.map((task, index) => (
                       <div key={task.id || index} className="flex items-center space-x-2">
@@ -1878,6 +1926,7 @@ export function Roadmap() {
                           }}
                           className="h-4 w-4 text-violet-600 rounded"
                           aria-label={`Task: ${task.title}`}
+                          title={`Toggle completion for: ${task.title}`}
                         />
                         <span className={task.completed ? 'line-through text-gray-400' : ''}>
                           {task.title}
@@ -1887,13 +1936,14 @@ export function Roadmap() {
                           onClick={() => handleRemoveTask(index)}
                           className="text-red-500 hover:text-red-700"
                           aria-label={`Remove task: ${task.title}`}
+                          title={`Remove task: ${task.title}`}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
-                      </div>
-                    ))}
+                </div>
+              ))}
                     <div className="flex mt-2">
                       <input
                         type="text"
@@ -1902,6 +1952,7 @@ export function Roadmap() {
                         onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                         placeholder="Add a task"
                         className="flex-1 p-2 border border-gray-300 rounded-l"
+                        aria-label="New task title"
                       />
                       <button
                         type="button"
@@ -1912,8 +1963,8 @@ export function Roadmap() {
                       >
                         Add
                       </button>
-                    </div>
-                  </div>
+            </div>
+        </div>
                 </div>
                 <div className="mt-4 flex justify-end">
                   <button
@@ -1974,7 +2025,14 @@ export function Roadmap() {
         {isAddingProgram && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-              <h3 className="text-lg font-medium mb-4">Add New Program</h3>
+              <div className="flex items-center mb-4">
+                <img 
+                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  alt="ProgramMatrix Logo" 
+                  className="h-6 w-auto mr-2" 
+                />
+                <h3 className="text-lg font-medium">Add New Program</h3>
+              </div>
               <div>
                 <label htmlFor="new-program-name" className="block text-sm font-medium text-gray-700">Name</label>
                 <input

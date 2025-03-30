@@ -38,8 +38,12 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <NavLink to="/" className="text-violet-600 font-bold text-xl">
-              ProgramMatrix
+            <NavLink to="/" className="flex items-center">
+              <img 
+                src="/dist/assets/ProgramMatrix_logo.png" 
+                alt="ProgramMatrix Logo" 
+                className="h-8 w-auto mr-2" 
+              />
             </NavLink>
             {user && (
               <div className="hidden md:block">

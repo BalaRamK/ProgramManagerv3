@@ -196,8 +196,13 @@ export function Dashboard() {
       <div className="flex">
         {/* Sidebar Navigation */}
         <aside className="w-64 bg-white shadow-md z-10 fixed h-full">
+          
           <div className="p-6">
-            <h1 className="text-xl font-bold text-gray-900">ProgramMatrix</h1>
+              <img 
+                src="/dist/assets/ProgramMatrix_logo.png" 
+                alt="ProgramMatrix Logo" 
+                className="h-8 w-auto mr-2" 
+              />
           </div>
           <nav className="mt-2">
             <div className="px-4 py-2">
@@ -233,7 +238,7 @@ export function Dashboard() {
               onClick={(e) => { e.preventDefault(); setActiveTab('scenario'); navigate('/scenario-planning')}}
             >
               <Lightbulb className="h-5 w-5 mr-3 text-gray-500" />
-              <span>Scenario Planning</span>
+              <span>Risk Analysis</span>
             </a>
             <a 
               href="#" 

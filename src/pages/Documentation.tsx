@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Search, Menu as MenuIcon, ExternalLink, ArrowLeft, Edit2, Save, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import 'quill/dist/quill.snow.css';
+import styles from '../styles/quill.module.css';
 
 interface DocSection {
   id: string;
@@ -173,6 +174,36 @@ export default function Documentation() {
     ]
   };
 
+  const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'color', 'background',
+    'link', 'image', 'code-block'
+  ];
+
+  const editorWrapperStyle = {
+    '& .ql-container': {
+      minHeight: '200px',
+      fontSize: '16px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    },
+    '& .ql-editor': {
+      minHeight: '200px',
+      fontSize: '16px',
+      lineHeight: '1.5',
+    },
+    '& .ql-toolbar.ql-snow': {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.375rem 0.375rem 0 0',
+    },
+    '& .ql-container.ql-snow': {
+      border: '1px solid #e2e8f0',
+      borderTop: 'none',
+      borderRadius: '0 0 0.375rem 0.375rem',
+    },
+  } as const;
+
   return (
     <div className="flex h-screen bg-white">
       {/* Left Sidebar */}
@@ -182,6 +213,13 @@ export default function Documentation() {
         } border-r border-gray-200 flex flex-col bg-gray-50 transition-all duration-300 fixed left-0 h-full z-10`}
       >
         <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-center mb-4">
+            <img 
+              src="/dist/assets/ProgramMatrix_logo.png" 
+              alt="ProgramMatrix Logo" 
+              className="h-8"
+            />
+          </div>
           <div className="relative">
             <input
               type="text"
@@ -204,14 +242,21 @@ export default function Documentation() {
           ))}
         </nav>
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>Documentation v1.0.0</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/dist/assets/ProgramMatrix_logo.png" 
+                alt="ProgramMatrix Logo" 
+                className="h-5"
+              />
+              <span className="text-sm text-gray-600">v1.0.0</span>
+            </div>
             {isAdmin && (
               <a
                 href="https://github.com/yourusername/docs"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-blue-600"
+                className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600"
               >
                 Edit on GitHub
                 <ExternalLink size={14} />
@@ -242,20 +287,27 @@ export default function Documentation() {
             </button>
           </div>
           <div className="ml-4 flex-1 flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="border-b border-gray-300 focus:border-blue-500 focus:outline-none px-2 py-1 w-full"
-                  aria-label="Edit documentation title"
-                  title="Edit documentation title"
-                />
-              ) : (
-                currentSection?.title || 'Documentation'
-              )}
-            </h1>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/dist/assets/ProgramMatrix_logo.png" 
+                alt="ProgramMatrix Logo" 
+                className="h-6"
+              />
+              <h1 className="text-xl font-semibold text-gray-900">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="border-b border-gray-300 focus:border-blue-500 focus:outline-none px-2 py-1 w-full"
+                    aria-label="Edit documentation title"
+                    title="Edit documentation title"
+                  />
+                ) : (
+                  currentSection?.title || 'Documentation'
+                )}
+              </h1>
+            </div>
             {isAdmin && currentSection && (
               <div className="flex items-center gap-2">
                 {isEditing ? (
@@ -300,12 +352,16 @@ export default function Documentation() {
             {currentSection && (
               <div className="prose prose-blue max-w-none">
                 {isEditing ? (
-                  <ReactQuill
-                    value={editedContent}
-                    onChange={setEditedContent}
-                    modules={quillModules}
-                    className="bg-white min-h-[500px]"
-                  />
+                  <div className={styles.quillWrapper}>
+                    <ReactQuill
+                      value={editedContent}
+                      onChange={setEditedContent}
+                      modules={quillModules}
+                      formats={quillFormats}
+                      theme="snow"
+                      className="bg-white min-h-[500px]"
+                    />
+                  </div>
                 ) : (
                   <div dangerouslySetInnerHTML={{ __html: currentSection.content }} />
                 )}

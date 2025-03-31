@@ -199,7 +199,7 @@ export function Dashboard() {
           
           <div className="p-6">
               <img 
-                src="/dist/assets/ProgramMatrix_logo.png" 
+                src="/src/assets/ProgramMatrix_logo.png" 
                 alt="ProgramMatrix Logo" 
                 className="h-8 w-auto mr-2" 
               />

@@ -215,7 +215,7 @@ export default function Documentation() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-center mb-4">
             <img 
-              src="/dist/assets/ProgramMatrix_logo.png" 
+              src="/src/assets/ProgramMatrix_logo.png" 
               alt="ProgramMatrix Logo" 
               className="h-8"
             />
@@ -245,7 +245,7 @@ export default function Documentation() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img 
-                src="/dist/assets/ProgramMatrix_logo.png" 
+                src="/src/assets/ProgramMatrix_logo.png" 
                 alt="ProgramMatrix Logo" 
                 className="h-5"
               />
@@ -289,7 +289,7 @@ export default function Documentation() {
           <div className="ml-4 flex-1 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src="/dist/assets/ProgramMatrix_logo.png" 
+                src="/src/assets/ProgramMatrix_logo.png" 
                 alt="ProgramMatrix Logo" 
                 className="h-6"
               />

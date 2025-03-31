@@ -329,7 +329,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <img 
-                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  src="/src/assets/ProgramMatrix_logo.png" 
                   alt="ProgramMatrix Logo" 
                   className="h-6 w-auto mr-2" 
                 />
@@ -607,7 +607,7 @@ function ProgramDetailView({ program, onClose, onEdit, onDelete }: { program: Pr
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <img 
-                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  src="/src/assets/ProgramMatrix_logo.png" 
                   alt="ProgramMatrix Logo" 
                   className="h-6 w-auto mr-2" 
                 />
@@ -751,7 +751,7 @@ function GoalModal({ programId, onClose, onSubmit }: GoalModalProps) {
       <div className="bg-white rounded-lg shadow-lg p-6 w-96">
         <div className="flex items-center mb-4">
           <img 
-            src="/dist/assets/ProgramMatrix_logo.png" 
+            src="/src/assets/ProgramMatrix_logo.png" 
             alt="ProgramMatrix Logo" 
             className="h-6 w-auto mr-2" 
           />
@@ -1735,7 +1735,7 @@ export function Roadmap() {
         <div className="mb-8">
           <div className="flex items-center">
             <img 
-              src="/dist/assets/ProgramMatrix_logo.png" 
+              src="/src/assets/ProgramMatrix_logo.png" 
               alt="ProgramMatrix Logo" 
               className="h-10 w-auto mr-3" 
             />
@@ -1822,7 +1822,7 @@ export function Roadmap() {
             <div className="bg-white rounded-lg shadow-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center mb-4">
                 <img 
-                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  src="/src/assets/ProgramMatrix_logo.png" 
                   alt="ProgramMatrix Logo" 
                   className="h-6 w-auto mr-2" 
                 />
@@ -2027,7 +2027,7 @@ export function Roadmap() {
             <div className="bg-white rounded-lg shadow-lg p-6 w-96">
               <div className="flex items-center mb-4">
                 <img 
-                  src="/dist/assets/ProgramMatrix_logo.png" 
+                  src="/src/assets/ProgramMatrix_logo.png" 
                   alt="ProgramMatrix Logo" 
                   className="h-6 w-auto mr-2" 
                 />

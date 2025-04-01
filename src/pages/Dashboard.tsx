@@ -279,10 +279,10 @@ export function Dashboard() {
             <a 
               href="#" 
               className="flex items-center px-6 py-3 text-gray-600 hover:bg-gray-50"
-              onClick={(e) => { e.preventDefault(); setActiveTab('settings'); navigate('/settings')}}
+              onClick={(e) => { e.preventDefault(); navigate('/settings'); }}
             >
               <Settings className="h-5 w-5 mr-3 text-gray-500" />
-              <span>Settings</span>
+              <span>Organization and User Settings</span>
             </a>
             <a 
               href="#" 
@@ -330,12 +330,9 @@ export function Dashboard() {
             </div>
           </header>
 
-          {/* Main Content Area */}
+        {/* Main Content Area */}
           <div className="p-6">
-            {/* User and Organization Management */}
-            <div className="mb-8">
-              <UserOrgManagement />
-            </div>
+            
 
             {/* Dashboard Content */}
             {activeTab === 'overview' && (
@@ -571,7 +568,7 @@ export function Dashboard() {
                               <span>{activity.user}</span> • <span>{activity.time}</span>
                             </p>
                           </div>
-                          <button className="text-gray-400 hover:text-gray-600">
+                          <button className="text-gray-400 hover:text-gray-600" title="More options">
                             <MoreHorizontal className="h-5 w-5" />
                           </button>
                         </div>

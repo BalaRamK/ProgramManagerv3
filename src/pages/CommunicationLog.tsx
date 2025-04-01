@@ -58,22 +58,29 @@ interface SavedReport {
 }
 
 const CommunicationLog = () => {
-  const [logs, setLogs] = useState<any[]>([]); // State to hold communication logs
-  const [loading, setLoading] = useState<boolean>(true); // Loading state
-  const [messages, setMessages] = useState<Message[]>([]); // State for messages
-  const [selectedLog, setSelectedLog] = useState<any | null>(null); // State for the selected log
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // State for modal visibility
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false); // State for add modal visibility
-  const [programs, setPrograms] = useState<any[]>([]); // State for programs
-  const [milestones, setMilestones] = useState<any[]>([]); // State for milestones
-  const [risks, setRisks] = useState<any[]>([]); // State for risks
-  const [users, setUsers] = useState<any[]>([]); // State for users
-  const [sortCriteria, setSortCriteria] = useState<string>(''); // State for sorting criteria
-  const [searchQuery, setSearchQuery] = useState<string>(''); // State for search query
-  const [selectedProgram, setSelectedProgram] = useState<string>(''); // State for selected program
-  const [selectedMilestone, setSelectedMilestone] = useState<string>(''); // State for selected milestone
-
-  // State for new log
+  // Group all useState hooks together at the top
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [risks, setRisks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [sortCriteria, setSortCriteria] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedProgram, setSelectedProgram] = useState<string>('');
+  const [selectedMilestone, setSelectedMilestone] = useState<string>('');
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [generatedReport, setGeneratedReport] = useState<ReportData | null>(null);
+  const [reportConfig, setReportConfig] = useState<ReportConfig>({
+    metrics: [],
+    dataSources: [],
+    dateRange: 'Last 7 Days',
+    visualization: 'Bar Chart'
+  });
   const [newLog, setNewLog] = useState({
     type: '',
     message: '',
@@ -83,25 +90,7 @@ const CommunicationLog = () => {
     user_id: '',
   });
 
-  // State for report generation
-  const [reportConfig, setReportConfig] = useState<ReportConfig>({
-    metrics: [],
-    dataSources: [],
-    dateRange: 'Last 7 Days',
-    visualization: 'Bar Chart'
-  });
-  const [generatedReport, setGeneratedReport] = useState<ReportData | null>(null);
-  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
-
-  // Color mapping for types
-  const typeColors: { [key: string]: string } = {
-    Program: 'bg-blue-100 text-blue-800',
-    Milestone: 'bg-green-100 text-green-800',
-    Risk: 'bg-red-100 text-red-800',
-    User: 'bg-yellow-100 text-yellow-800',
-  };
-
-  // Fetch communication logs from Supabase
+  // Group all useEffect hooks together
   useEffect(() => {
     const fetchLogs = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -111,7 +100,6 @@ const CommunicationLog = () => {
       }
 
       try {
-        // Get user's organization_id first
         let { data: userProfile, error: userError } = await supabase
           .from('users')
           .select('organization_id')
@@ -123,11 +111,7 @@ const CommunicationLog = () => {
           return;
         }
 
-        // If no organization_id found, create a default organization and update user
         if (!userProfile?.organization_id) {
-          console.log('No organization found for user, creating default...');
-          
-          // Create default organization
           const { data: orgData, error: orgError } = await supabase
             .from('organizations')
             .insert([{ name: 'Default Organization' }])
@@ -139,7 +123,6 @@ const CommunicationLog = () => {
             return;
           }
 
-          // Update user with new organization_id
           const { data: updatedUser, error: updateError } = await supabase
             .from('users')
             .update({ organization_id: orgData.id })
@@ -160,9 +143,6 @@ const CommunicationLog = () => {
           return;
         }
 
-        console.log('User profile for fetch:', userProfile);
-
-        // Fetch logs for the user's organization
         const { data, error } = await supabase
           .from('communication_logs')
           .select(`
@@ -182,7 +162,7 @@ const CommunicationLog = () => {
           console.error('Error fetching communication logs:', error);
         } else {
           console.log('Successfully fetched logs:', data);
-          setLogs(data || []); // Ensure data is not null
+          setLogs(data || []);
         }
       } catch (err) {
         console.error('Failed to fetch logs:', err);
@@ -191,16 +171,14 @@ const CommunicationLog = () => {
     };
 
     fetchLogs();
-  }, []); // Fetch logs on component mount
+  }, []);
 
-  // Fetch related data for programs, milestones, risks, and users
   useEffect(() => {
     const fetchRelatedData = async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
       try {
-        // Fetch programs
         const { data: programsData, error: programsError } = await supabase
           .from('programs')
           .select('id, name')
@@ -209,7 +187,6 @@ const CommunicationLog = () => {
         if (programsError) console.error('Error fetching programs:', programsError);
         else setPrograms(programsData || []);
 
-        // Fetch milestones
         const { data: milestonesData, error: milestonesError } = await supabase
           .from('milestones')
           .select('id, title')
@@ -218,7 +195,6 @@ const CommunicationLog = () => {
         if (milestonesError) console.error('Error fetching milestones:', milestonesError);
         else setMilestones(milestonesData || []);
         
-        // Fetch risks - without user_id filter
         const { data: risksData, error: risksError } = await supabase
           .from('risks')
           .select('id, description');
@@ -226,7 +202,6 @@ const CommunicationLog = () => {
         if (risksError) console.error('Error fetching risks:', risksError);
         else setRisks(risksData || []);
         
-        // Fetch users - without user_id filter
         const { data: usersData, error: usersError } = await supabase
           .from('users')
           .select('id, name');
@@ -240,6 +215,35 @@ const CommunicationLog = () => {
 
     fetchRelatedData();
   }, []);
+
+  useEffect(() => {
+    const fetchSavedReports = async () => {
+      try {
+        const { data: reports, error } = await supabase
+          .from('reports')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching reports:', error);
+        } else {
+          setSavedReports(reports || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch reports:', err);
+      }
+    };
+
+    fetchSavedReports();
+  }, []);
+
+  // Color mapping for types
+  const typeColors: { [key: string]: string } = {
+    Program: 'bg-blue-100 text-blue-800',
+    Milestone: 'bg-green-100 text-green-800',
+    Risk: 'bg-red-100 text-red-800',
+    User: 'bg-yellow-100 text-yellow-800',
+  };
 
   // Function to handle sorting
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -741,28 +745,6 @@ const CommunicationLog = () => {
     }));
   };
 
-  // Add function to fetch saved reports
-  useEffect(() => {
-    const fetchSavedReports = async () => {
-      try {
-        const { data: reports, error } = await supabase
-          .from('reports')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching reports:', error);
-        } else {
-          setSavedReports(reports || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch reports:', err);
-      }
-    };
-
-    fetchSavedReports();
-  }, []);
-
   // Add function to load a saved report
   const handleLoadReport = (report: SavedReport) => {
     setGeneratedReport(report.data);
@@ -1061,266 +1043,6 @@ const CommunicationLog = () => {
           </div>
         </div>
       )}
-
-      {/* Report Configuration Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Report Configuration</h2>
-        
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Metrics</h3>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.metrics.includes('Budget Utilization')}
-                  onChange={() => handleMetricChange('Budget Utilization')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Budget Utilization</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.metrics.includes('Timeline Progress')}
-                  onChange={() => handleMetricChange('Timeline Progress')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Timeline Progress</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.metrics.includes('Task Completion')}
-                  onChange={() => handleMetricChange('Task Completion')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Task Completion</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.metrics.includes('Risk Mitigation')}
-                  onChange={() => handleMetricChange('Risk Mitigation')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Risk Mitigation</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Data Sources</h3>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.dataSources.includes('KPIs')}
-                  onChange={() => handleDataSourceChange('KPIs')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">KPIs</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.dataSources.includes('Financial')}
-                  onChange={() => handleDataSourceChange('Financial')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Financial</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.dataSources.includes('Risks')}
-                  onChange={() => handleDataSourceChange('Risks')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Risks</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={reportConfig.dataSources.includes('Communications')}
-                  onChange={() => handleDataSourceChange('Communications')}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2">Communications</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Visualization</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="visualization"
-                value="Bar Chart"
-                checked={reportConfig.visualization === 'Bar Chart'}
-                onChange={(e) => handleVisualizationChange(e.target.value)}
-                className="rounded-full border-gray-300 text-violet-600 focus:ring-violet-500"
-              />
-              <span className="ml-2">Bar Chart</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="visualization"
-                value="Pie Chart"
-                checked={reportConfig.visualization === 'Pie Chart'}
-                onChange={(e) => handleVisualizationChange(e.target.value)}
-                className="rounded-full border-gray-300 text-violet-600 focus:ring-violet-500"
-              />
-              <span className="ml-2">Pie Chart</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="visualization"
-                value="Line Chart"
-                checked={reportConfig.visualization === 'Line Chart'}
-                onChange={(e) => handleVisualizationChange(e.target.value)}
-                className="rounded-full border-gray-300 text-violet-600 focus:ring-violet-500"
-              />
-              <span className="ml-2">Line Chart</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleGenerateReport}
-            disabled={reportConfig.metrics.length === 0 || reportConfig.dataSources.length === 0}
-            className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Generate Report
-          </button>
-        </div>
-      </div>
-
-      {/* Generated Report Section */}
-      {generatedReport && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">{generatedReport.title}</h2>
-            <button
-              onClick={() => {
-                const element = document.createElement('a');
-                const file = new Blob([generatedReport.summary], { type: 'text/plain' });
-                element.href = URL.createObjectURL(file);
-                element.download = `${generatedReport.title}.txt`;
-                document.body.appendChild(element);
-                element.click();
-              }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download Report
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Metrics Summary</h3>
-              <div className="space-y-2">
-                {generatedReport.metrics.map((metric, index) => (
-                  <div key={index} className="flex justify-between">
-                    <span>{metric.name}:</span>
-                    <span className="font-medium">{metric.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Visualization</h3>
-              <div className="h-64 bg-gray-50 rounded-lg p-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  {reportConfig.visualization === 'Bar Chart' ? (
-                    <BarChart data={generatedReport.visualData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <RechartsBar dataKey="value" fill="#818CF8" />
-                    </BarChart>
-                  ) : reportConfig.visualization === 'Pie Chart' ? (
-                    <PieChart>
-                      <RechartsPie
-                        data={generatedReport.visualData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#818CF8"
-                        label
-                      />
-                      <RechartsTooltip />
-                      <RechartsLegend />
-                    </PieChart>
-                  ) : (
-                    <LineChart data={generatedReport.visualData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <RechartsTooltip />
-                      <RechartsLine type="monotone" dataKey="value" stroke="#818CF8" />
-                    </LineChart>
-                  )}
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Report Summary</h3>
-            <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg text-sm">
-              {generatedReport.summary}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Saved Reports Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Saved Reports</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {savedReports.map(report => (
-            <div key={report.id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-md font-medium">{report.title}</h3>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleLoadReport(report)}
-                    className="text-blue-600 hover:text-blue-800"
-                    title="Load report"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteReport(report.id)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Delete report"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                Created: {new Date(report.created_at).toLocaleDateString()}
-              </p>
-              <p className="text-sm text-gray-600">
-                Metrics: {report.data.metrics.length}
-              </p>
-          </div>
-        ))}
-        </div>
-      </div>
     </div>
   );
 };

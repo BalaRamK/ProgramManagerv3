@@ -44,31 +44,38 @@ interface Kpi {
 
 interface Financial {
   id: string;
-  program_id: string;
+  organization_id: string;
   planned_budget: number;
   actual_budget: number;
   forecasted_budget: number;
+  total_revenue: number;
+  total_cost: number;
+  profit: number;
+  cost_variance: number;
+  roi: number;
   updated_at: string;
 }
 
 interface DepartmentFinancial {
   id: string;
-  program_id: string;
+  organization_id: string;
   department_id: string;
   month_year: string;
   planned_spend: number;
   actual_spend: number;
   forecasted_spend: number;
   created_at: string;
-  name: string;
-  spent: number;
-  budget: number;
+  spent?: number;
+  budget?: number;
 }
 
 interface FinancialSnapshot {
   id: string;
-  program_id: string;
+  organization_id: string;
   snapshot_date: string;
+  total_revenue: number;
+  total_cost: number;
+  profit: number;
   total_budget: number;
   total_spent: number;
   remaining_budget: number;
@@ -146,6 +153,44 @@ interface FormData {
   approved_by_name?: string;
   approver_name?: string;
   created_date?: string;
+}
+
+interface LevelCost {
+  id: string;
+  organization_id: string;
+  level: string;
+  cost_per_month: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Revenue {
+  id: string;
+  organization_id: string;
+  billing_type: 'Direct' | 'Indirect';
+  billing_sub_type: 'resource_billing' | 'service_billing' | 'product_billing' | 'others';
+  from_date: string;
+  to_date: string;
+  revenue_amount: number;
+  other_details?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Profit {
+  id: string;
+  organization_id: string;
+  year: number;
+  month: number;
+  revenue: string;
+  resource_cost: string;
+  vendor_cost: string;
+  misc_cost: string;
+  total_cost: string;
+  profit: string;
+  roi: string;
 }
 
 function MetricCard({ metric }: { metric: Kpi }) {
@@ -265,14 +310,13 @@ function DepartmentSpending() {
         .from('department_financials')
         .select(`
           id,
-          program_id,
+          organization_id,
           department_id,
           month_year,
           planned_spend,
           actual_spend,
           forecasted_spend,
-          created_at,
-          departments (name)
+          created_at
         `);
       if (departmentData) {
         setDepartmentSpending(departmentData);
@@ -424,19 +468,18 @@ function CostManagementModal({
   isOpen,
   onClose,
   type,
-  programId,
   organizationId
 }: {
   isOpen: boolean;
   onClose: () => void;
   type: 'resource' | 'vendor' | 'misc';
-  programId: string | null;
   organizationId: string | null;
 }) {
   const [formData, setFormData] = useState<Partial<FormData>>({});
   const [users, setUsers] = useState<User[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [availableInvoices, setAvailableInvoices] = useState<InvoiceForSelect[]>([]);
+  const [levelCosts, setLevelCosts] = useState<LevelCost[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -452,6 +495,32 @@ function CostManagementModal({
         .from('organizations')
         .select('id, name');
       if (orgData) setOrganizations(orgData as Organization[]);
+
+      // Fetch level costs if this is a resource cost
+      if (type === 'resource' && organizationId) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: levelData } = await supabase
+          .from('level_costs')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .lte('effective_from', today)
+          .or(`effective_to.is.null,effective_to.gte.${today}`)
+          .order('level', { ascending: true });
+        
+        if (levelData) {
+          // Remove duplicates and keep only the most recent effective level
+          const uniqueLevels = levelData.reduce((acc: LevelCost[], curr) => {
+            const existingIndex = acc.findIndex(item => item.level === curr.level);
+            if (existingIndex === -1) {
+              acc.push(curr);
+            } else if (new Date(curr.effective_from) > new Date(acc[existingIndex].effective_from)) {
+              acc[existingIndex] = curr;
+            }
+            return acc;
+          }, []);
+          setLevelCosts(uniqueLevels);
+        }
+      }
     };
 
     // Add back fetchRelevantInvoices if removed
@@ -494,14 +563,33 @@ function CostManagementModal({
       setFormData((prev) => ({ ...prev, [name]: value }));
    };
 
-   // Add back the correct handleSubmit logic if it was reverted
+   const handleLevelChange = async (level: string) => {
+    if (!level || !organizationId) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const applicableCost = levelCosts.find(lc => 
+      lc.level === level && 
+      new Date(lc.effective_from) <= new Date(today) && 
+      (!lc.effective_to || new Date(lc.effective_to) >= new Date(today))
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      current_level: level,
+      cost: applicableCost?.cost_per_month?.toString() || ''
+    }));
+  };
+
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!programId || !organizationId) {
-          alert("Program or Organization context is missing. Cannot save cost.");
+      if (!organizationId) {
+          alert("Organization context is missing. Cannot save cost.");
           return;
       }
-      if (type === 'resource' && !formData.user_id) { alert("User is required for Resource Cost."); return; }
+      if (type === 'resource' && !formData.user_id) { 
+        alert("User is required for Resource Cost."); 
+        return; 
+      }
       if (type === 'vendor' && !formData.vendor_name) { alert("Vendor Name is required."); return; }
       if (type === 'misc' && !formData.name) { alert("Name/Description is required."); return; }
       const costValue = formData.cost ? parseFloat(formData.cost as string) : undefined;
@@ -509,15 +597,23 @@ function CostManagementModal({
            alert("Invalid Cost value.");
            return;
        }
-      const dataToInsert: Partial<FormData> & { program_id: string, organization_id: string } = {
+      const dataToInsert: Partial<FormData> & { organization_id: string } = {
           ...formData,
-          program_id: programId,
           organization_id: organizationId,
-          cost: costValue,
+          cost: type !== 'resource' ? costValue : undefined, // Only include cost for non-resource types
           invoice_id: formData.invoice_id || null,
       };
       // Clean up fields based on type
-      if (type === 'resource') { delete dataToInsert.vendor_name; delete dataToInsert.cycle; delete dataToInsert.approver_id; delete dataToInsert.name; delete dataToInsert.billed_by_id; delete dataToInsert.approved_by_id; delete dataToInsert.invoice_id; }
+      if (type === 'resource') { 
+          delete dataToInsert.vendor_name; 
+          delete dataToInsert.cycle; 
+          delete dataToInsert.approver_id; 
+          delete dataToInsert.name; 
+          delete dataToInsert.billed_by_id; 
+          delete dataToInsert.approved_by_id; 
+          delete dataToInsert.invoice_id;
+          delete dataToInsert.cost; // Remove cost field for resource costs as it's derived from level_costs
+      }
       else if (type === 'vendor') { delete dataToInsert.user_id; delete dataToInsert.manager_id; delete dataToInsert.starting_level; delete dataToInsert.current_level; delete dataToInsert.status; delete dataToInsert.billing; delete dataToInsert.name; delete dataToInsert.billed_by_id; delete dataToInsert.approved_by_id; }
       else { delete dataToInsert.user_id; delete dataToInsert.manager_id; delete dataToInsert.start_date; delete dataToInsert.end_date; delete dataToInsert.starting_level; delete dataToInsert.current_level; delete dataToInsert.status; delete dataToInsert.billing; delete dataToInsert.vendor_name; delete dataToInsert.cycle; delete dataToInsert.approver_id; }
 
@@ -572,7 +668,27 @@ function CostManagementModal({
               </div>
                <div className="grid grid-cols-2 gap-4">
                  <div> <Label htmlFor="starting_level">Starting Level</Label> <Input id="starting_level" type="text" name="starting_level" value={formData.starting_level || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                 <div> <Label htmlFor="current_level">Current Level</Label> <Input id="current_level" type="text" name="current_level" value={formData.current_level || ''} onChange={handleInputChange} className="mt-1"/> </div>
+                 <div>
+                   <Label htmlFor="current_level">Level</Label>
+                   <Select 
+                     name="current_level" 
+                     value={formData.current_level || ''} 
+                     onValueChange={handleLevelChange}
+                   >
+                     <SelectTrigger className="w-full mt-1">
+                       <SelectValue placeholder="Select Level" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {Array.from(new Set(levelCosts.map(lc => lc.level)))
+                         .sort()
+                         .map(level => (
+                           <SelectItem key={level} value={level}>
+                             {level} - ${levelCosts.find(lc => lc.level === level)?.cost_per_month.toLocaleString(undefined, {minimumFractionDigits: 2})} /month
+                           </SelectItem>
+                         ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -796,44 +912,65 @@ function InvoiceManagementSection({ organizationId }: { organizationId: string |
   );
 }
 
-function CostManagementSection({ programId, organizationId }: { programId: string | null; organizationId: string | null }) {
+function CostManagementSection({ organizationId }: { organizationId: string | null }) {
   const [activeTab, setActiveTab] = useState<'resource' | 'vendor' | 'misc'>('resource');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'resource' | 'vendor' | 'misc'>('resource');
   const [resourceCosts, setResourceCosts] = useState<FormData[]>([]);
   const [vendorCosts, setVendorCosts] = useState<FormData[]>([]);
   const [miscCosts, setMiscCosts] = useState<FormData[]>([]);
+  const [isLevelCostsModalOpen, setIsLevelCostsModalOpen] = useState(false);
+
+  const verifyConnection = async () => {
+    try {
+      // Test the connection with a simple query
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .limit(1);
+
+      if (error) {
+        console.error('Supabase connection test failed:', error);
+        return false;
+      }
+      console.log('Supabase connection successful');
+      return true;
+    } catch (err) {
+      console.error('Supabase connection error:', err);
+      return false;
+    }
+  };
 
   const fetchCosts = async () => {
-      if (!programId) {
+      if (!organizationId) {
          setResourceCosts([]); setVendorCosts([]); setMiscCosts([]);
          return;
       }
       // Fetch Resource Costs
       const { data: resourceData, error: resourceError } = await supabase.from('resource_costs')
         .select(`*, user:users!resource_costs_user_id_fkey(id, name), manager:users!resource_costs_manager_id_fkey(id, name), organization:organizations(id, name)`)
-        .eq('program_id', programId);
+        .eq('organization_id', organizationId);
        if (resourceError) console.error("Error fetching resource costs:", resourceError);
        else if (resourceData) setResourceCosts(resourceData as FormData[]); else setResourceCosts([]);
 
       // Fetch Vendor Costs
       const { data: vendorData, error: vendorError } = await supabase.from('vendor_costs')
         .select(`*, organization:organizations!vendor_costs_organization_id_fkey(id, name), approver:users!vendor_costs_approver_id_fkey(id, name), invoice:invoices!vendor_costs_invoice_id_fkey(id, name)`)
-         .eq('program_id', programId);
+         .eq('organization_id', organizationId);
        if (vendorError) console.error("Error fetching vendor costs:", vendorError);
        else if (vendorData) setVendorCosts(vendorData as FormData[]); else setVendorCosts([]);
 
       // Fetch Miscellaneous Costs (using 'misc' internally, corresponds to miscellaneous_costs table)
       const { data: miscData, error: miscError } = await supabase.from('miscellaneous_costs')
         .select(`*, billed_by:users!miscellaneous_costs_billed_by_id_fkey(id, name), approved_by:users!miscellaneous_costs_approved_by_id_fkey(id, name), organization:organizations!miscellaneous_costs_organization_id_fkey(id, name), invoice:invoices!miscellaneous_costs_invoice_id_fkey(id, name)`)
-         .eq('program_id', programId);
+         .eq('organization_id', organizationId);
       if (miscError) console.error("Error fetching misc costs:", miscError);
       else if (miscData) setMiscCosts(miscData as FormData[]); else setMiscCosts([]);
     };
 
   useEffect(() => {
     fetchCosts();
-  }, [programId]);
+  }, [organizationId]);
 
   const openModal = (type: 'resource' | 'vendor' | 'misc') => {
     setModalType(type);
@@ -891,7 +1028,7 @@ function CostManagementSection({ programId, organizationId }: { programId: strin
           <table className="min-w-full divide-y divide-gray-200">
             <thead><tr>{headers.map(h => <th key={h} className={`${baseThClasses} ${h === 'Actions' ? centerThClasses : ''}`}>{h}</th>)}</tr></thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {!programId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select a program to view costs.</td></tr>)
+              {!organizationId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select an organization to view costs.</td></tr>)
                : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No resource costs found.</td></tr>)
                : costsToRender.map((cost) => (
                 <tr key={cost.id}>
@@ -919,7 +1056,7 @@ function CostManagementSection({ programId, organizationId }: { programId: strin
           <table className="min-w-full divide-y divide-gray-200">
             <thead><tr>{headers.map(h => <th key={h} className={`${baseThClasses} ${h === 'Cost' ? rightThClasses : h === 'Actions' ? centerThClasses : ''}`}>{h}</th>)}</tr></thead>
             <tbody className="bg-white divide-y divide-gray-200">
-             {!programId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select a program to view costs.</td></tr>)
+             {!organizationId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select an organization to view costs.</td></tr>)
               : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No vendor costs found.</td></tr>)
               : costsToRender.map((cost) => (
                 <tr key={cost.id}>
@@ -948,7 +1085,7 @@ function CostManagementSection({ programId, organizationId }: { programId: strin
            <table className="min-w-full divide-y divide-gray-200">
              <thead><tr>{headers.map(h => <th key={h} className={`${baseThClasses} ${h === 'Cost' ? rightThClasses : h === 'Actions' ? centerThClasses : ''}`}>{h}</th>)}</tr></thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {!programId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select a program to view costs.</td></tr>)
+              {!organizationId ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">Select an organization to view costs.</td></tr>)
                : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No miscellaneous costs found.</td></tr>)
                : costsToRender.map((cost) => (
                 <tr key={cost.id}>
@@ -984,7 +1121,7 @@ function CostManagementSection({ programId, organizationId }: { programId: strin
             </Button>
           ))}
         </div>
-         <Button onClick={() => openModal(activeTab)} variant="default" size="sm" disabled={!programId} title={!programId ? "Select a program first" : `Add new ${activeTab} cost`}>
+         <Button onClick={() => openModal(activeTab)} variant="default" size="sm" disabled={!organizationId} title={!organizationId ? "Select an organization first" : `Add new ${activeTab} cost`}>
            <Plus className="h-4 w-4 mr-2" />
            Add {activeTab} Cost
          </Button>
@@ -993,7 +1130,817 @@ function CostManagementSection({ programId, organizationId }: { programId: strin
         {renderCostList()}
       </div>
       {isModalOpen && (
-        <CostManagementModal isOpen={isModalOpen} onClose={handleModalClose} type={modalType} programId={programId} organizationId={organizationId} />
+        <CostManagementModal isOpen={isModalOpen} onClose={handleModalClose} type={modalType} organizationId={organizationId} />
+      )}
+      <Button onClick={() => setIsLevelCostsModalOpen(true)} variant="outline" size="sm" disabled={!organizationId}>
+        <Settings className="h-4 w-4 mr-2" />
+        Manage Level Costs
+      </Button>
+      {isLevelCostsModalOpen && (
+        <LevelCostsModal
+          isOpen={isLevelCostsModalOpen}
+          onClose={() => setIsLevelCostsModalOpen(false)}
+          organizationId={organizationId}
+        />
+      )}
+    </div>
+  );
+}
+
+function LevelCostsModal({
+  isOpen,
+  onClose,
+  organizationId
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  organizationId: string | null;
+}) {
+  const [levelCosts, setLevelCosts] = useState<LevelCost[]>([]);
+  const [newLevel, setNewLevel] = useState({ level: '', cost_per_month: '', effective_from: '' });
+
+  useEffect(() => {
+    if (isOpen && organizationId) {
+      fetchLevelCosts();
+    }
+  }, [isOpen, organizationId]);
+
+  const fetchLevelCosts = async () => {
+    if (!organizationId) return;
+    const { data, error } = await supabase
+      .from('level_costs')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('level', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching level costs:', error);
+    } else {
+      setLevelCosts(data || []);
+    }
+  };
+
+  const handleAddLevel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId) return;
+
+    const { error } = await supabase.from('level_costs').insert([{
+      organization_id: organizationId,
+      level: newLevel.level,
+      cost_per_month: parseFloat(newLevel.cost_per_month),
+      effective_from: newLevel.effective_from
+    }]);
+
+    if (error) {
+      alert(`Error adding level cost: ${error.message}`);
+    } else {
+      setNewLevel({ level: '', cost_per_month: '', effective_from: '' });
+      fetchLevelCosts();
+    }
+  };
+
+  const handleDeleteLevel = async (id: string) => {
+    const confirmation = window.confirm("Are you sure you want to delete this level cost?");
+    if (!confirmation) return;
+
+    const { error } = await supabase
+      .from('level_costs')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert(`Error deleting level cost: ${error.message}`);
+    } else {
+      fetchLevelCosts();
+    }
+  };
+
+  return (
+    <div className={`fixed inset-0 bg-black bg-opacity-50 ${isOpen ? 'flex' : 'hidden'} items-center justify-center z-50`}>
+      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Manage Level Costs</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleAddLevel} className="grid grid-cols-3 gap-4 mb-6">
+          <div>
+            <Label htmlFor="level">Level</Label>
+            <Input
+              id="level"
+              value={newLevel.level}
+              onChange={(e) => setNewLevel(prev => ({ ...prev, level: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="cost_per_month">Cost per Month</Label>
+            <Input
+              id="cost_per_month"
+              type="number"
+              step="0.01"
+              value={newLevel.cost_per_month}
+              onChange={(e) => setNewLevel(prev => ({ ...prev, cost_per_month: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="effective_from">Effective From</Label>
+            <Input
+              id="effective_from"
+              type="date"
+              value={newLevel.effective_from}
+              onChange={(e) => setNewLevel(prev => ({ ...prev, effective_from: e.target.value }))}
+              required
+            />
+          </div>
+          <Button type="submit" className="col-span-3">Add Level Cost</Button>
+        </form>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost per Month</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Effective From</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Effective To</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {levelCosts.map((cost) => (
+                <tr key={cost.id}>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{cost.level}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    ${cost.cost_per_month.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {new Date(cost.effective_from).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {cost.effective_to ? new Date(cost.effective_to).toLocaleDateString() : '-'}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteLevel(cost.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevenueModal({
+  isOpen,
+  onClose,
+  organizationId
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  organizationId: string | null;
+}) {
+  const [formData, setFormData] = useState({
+    billing_type: 'Direct' as 'Direct' | 'Indirect',
+    billing_sub_type: 'resource_billing' as 'resource_billing' | 'service_billing' | 'product_billing' | 'others',
+    from_date: '',
+    to_date: '',
+    revenue_amount: '',
+    other_details: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId) {
+      alert('Organization ID is required');
+      return;
+    }
+
+    const revenueAmount = parseFloat(formData.revenue_amount);
+    if (isNaN(revenueAmount)) {
+      alert('Please enter a valid revenue amount');
+      return;
+    }
+
+    const { error } = await supabase.from('revenues').insert([{
+      ...formData,
+      organization_id: organizationId,
+      revenue_amount: revenueAmount
+    }]);
+
+    if (error) {
+      alert(`Error creating revenue entry: ${error.message}`);
+    } else {
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Add Revenue Entry</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="billing_type">Billing Type</Label>
+            <Select
+              name="billing_type"
+              value={formData.billing_type}
+              onValueChange={(value: 'Direct' | 'Indirect') => handleSelectChange('billing_type', value)}
+            >
+              <SelectTrigger className="w-full mt-1">
+                <SelectValue placeholder="Select Billing Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Direct">Direct</SelectItem>
+                <SelectItem value="Indirect">Indirect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="billing_sub_type">Billing Sub-Type</Label>
+            <Select
+              name="billing_sub_type"
+              value={formData.billing_sub_type}
+              onValueChange={(value: 'resource_billing' | 'service_billing' | 'product_billing' | 'others') => 
+                handleSelectChange('billing_sub_type', value)}
+            >
+              <SelectTrigger className="w-full mt-1">
+                <SelectValue placeholder="Select Billing Sub-Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="resource_billing">Resource Billing</SelectItem>
+                <SelectItem value="service_billing">Service Billing</SelectItem>
+                <SelectItem value="product_billing">Product Billing</SelectItem>
+                <SelectItem value="others">Others</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="from_date">From Date</Label>
+              <Input
+                id="from_date"
+                name="from_date"
+                type="date"
+                value={formData.from_date}
+                onChange={handleInputChange}
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="to_date">To Date</Label>
+              <Input
+                id="to_date"
+                name="to_date"
+                type="date"
+                value={formData.to_date}
+                onChange={handleInputChange}
+                required
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="revenue_amount">Revenue Amount</Label>
+            <Input
+              id="revenue_amount"
+              name="revenue_amount"
+              type="number"
+              step="0.01"
+              value={formData.revenue_amount}
+              onChange={handleInputChange}
+              required
+              className="mt-1"
+            />
+          </div>
+
+          {formData.billing_sub_type === 'others' && (
+            <div>
+              <Label htmlFor="other_details">Other Details</Label>
+              <Input
+                id="other_details"
+                name="other_details"
+                value={formData.other_details}
+                onChange={handleInputChange}
+                placeholder="Please specify the billing details"
+                className="mt-1"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-6">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">Save Revenue</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function RevenueManagementSection({ organizationId }: { organizationId: string | null }) {
+  const [revenues, setRevenues] = useState<Revenue[]>([]);
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+
+  const fetchRevenues = async () => {
+    if (!organizationId) {
+      setRevenues([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('revenues')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('from_date', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching revenues:", error);
+      setRevenues([]);
+    } else if (data) {
+      setRevenues(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchRevenues();
+  }, [organizationId]);
+
+  const handleModalClose = () => {
+    setIsRevenueModalOpen(false);
+    fetchRevenues();
+  };
+
+  const handleDeleteRevenue = async (revenueId: string) => {
+    const confirmation = window.confirm("Are you sure you want to delete this revenue entry?");
+    if (!confirmation) return;
+
+    const { error } = await supabase
+      .from('revenues')
+      .delete()
+      .eq('id', revenueId);
+
+    if (error) {
+      alert(`Error deleting revenue: ${error.message}`);
+    } else {
+      fetchRevenues();
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-semibold">Revenue Management</h2>
+        <Button 
+          onClick={() => setIsRevenueModalOpen(true)} 
+          variant="default" 
+          size="sm" 
+          disabled={!organizationId}
+          title={!organizationId ? "Select an organization first" : "Add new revenue entry"}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Revenue
+        </Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Billing Type</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub-Type</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From Date</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Date</th>
+              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue Amount</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Other Details</th>
+              <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {!organizationId ? (
+              <tr><td colSpan={7} className="text-center py-4 text-gray-500">Select an organization to view revenue entries.</td></tr>
+            ) : revenues.length === 0 ? (
+              <tr><td colSpan={7} className="text-center py-4 text-gray-500">No revenue entries found.</td></tr>
+            ) : (
+              revenues.map((revenue) => (
+                <tr key={revenue.id}>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{revenue.billing_type}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {revenue.billing_sub_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {new Date(revenue.from_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {new Date(revenue.to_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${revenue.revenue_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{revenue.other_details || '-'}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDeleteRevenue(revenue.id)}
+                      title="Delete Revenue Entry"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {organizationId && (
+        <RevenueModal
+          isOpen={isRevenueModalOpen}
+          onClose={handleModalClose}
+          organizationId={organizationId}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProfitSection({ organizationId }: { organizationId: string | null }) {
+  const [profits, setProfits] = useState<Profit[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchProfits = async () => {
+      if (!organizationId) {
+        setProfits([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profits_monthly')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('year', { ascending: false })
+          .order('month', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching profits:', error);
+          setProfits([]);
+        } else {
+          setProfits(data || []);
+        }
+      } catch (err) {
+        console.error('Error in fetchProfits:', err);
+        setProfits([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfits();
+  }, [organizationId]);
+
+  if (!organizationId) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-6">Profit Analysis</h2>
+        <div className="text-center text-gray-500">Select an organization to view profit analysis.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+      <h2 className="text-lg font-semibold mb-6">Profit Analysis</h2>
+      {loading ? (
+        <div className="text-center text-gray-500">Loading profit data...</div>
+      ) : profits.length === 0 ? (
+        <div className="text-center text-gray-500">No profit data available.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Resource Cost</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vendor Cost</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Misc Cost</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Cost</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">ROI (%)</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {profits.map((profit) => (
+                <tr key={profit.id}>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {`${profit.year}-${profit.month.toString().padStart(2, '0')}`}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${parseFloat(profit.revenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${parseFloat(profit.resource_cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${parseFloat(profit.vendor_cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${parseFloat(profit.misc_cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">
+                    ${parseFloat(profit.total_cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                    <span className={parseFloat(profit.profit) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${parseFloat(profit.profit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                    <span className={parseFloat(profit.roi) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {parseFloat(profit.roi).toFixed(2)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FinancialOverview({ organizationId }: { organizationId: string | null }) {
+  const [financials, setFinancials] = useState<Financial[]>([]);
+  const [snapshots, setSnapshots] = useState<FinancialSnapshot[]>([]);
+  const [filterPeriod, setFilterPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [loading, setLoading] = useState(false);
+
+  const fetchFinancialData = async () => {
+    if (!organizationId) {
+      setFinancials([]);
+      setSnapshots([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Fetch current financial data
+      const { data: financialData, error: financialError } = await supabase
+        .from('financials')
+        .select('*')
+        .eq('organization_id', organizationId);
+
+      if (financialError) {
+        console.error('Error fetching financials:', financialError);
+      } else {
+        setFinancials(financialData || []);
+      }
+
+      // Calculate date range based on filter period
+      const now = new Date();
+      let startDate = new Date();
+      switch (filterPeriod) {
+        case 'month':
+          startDate.setMonth(now.getMonth() - 12); // Last 12 months
+          break;
+        case 'quarter':
+          startDate.setMonth(now.getMonth() - 12); // Last 4 quarters (12 months)
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 3); // Last 3 years
+          break;
+      }
+
+      // Fetch snapshots within the date range
+      const { data: snapshotData, error: snapshotError } = await supabase
+        .from('financial_snapshots')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .gte('snapshot_date', startDate.toISOString().split('T')[0])
+        .lte('snapshot_date', now.toISOString().split('T')[0])
+        .order('snapshot_date', { ascending: true });
+
+      if (snapshotError) {
+        console.error('Error fetching snapshots:', snapshotError);
+      } else {
+        setSnapshots(snapshotData || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchFinancialData:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFinancialData();
+  }, [organizationId, filterPeriod]);
+
+  const aggregateData = (data: FinancialSnapshot[]) => {
+    if (data.length === 0) return [];
+
+    switch (filterPeriod) {
+      case 'month':
+        return data;
+      case 'quarter': {
+        const quarterlyData = data.reduce((acc: any[], snapshot) => {
+          const date = new Date(snapshot.snapshot_date);
+          const quarter = Math.floor(date.getMonth() / 3);
+          const year = date.getFullYear();
+          const key = `${year}-Q${quarter + 1}`;
+          
+          const existing = acc.find(item => item.period === key);
+          if (existing) {
+            existing.total_revenue += snapshot.total_revenue;
+            existing.total_cost += snapshot.total_cost;
+            existing.profit += snapshot.profit;
+            existing.roi = (existing.profit / existing.total_cost) * 100;
+          } else {
+            acc.push({
+              period: key,
+              total_revenue: snapshot.total_revenue,
+              total_cost: snapshot.total_cost,
+              profit: snapshot.profit,
+              roi: snapshot.roi
+            });
+          }
+          return acc;
+        }, []);
+        return quarterlyData;
+      }
+      case 'year': {
+        const yearlyData = data.reduce((acc: any[], snapshot) => {
+          const year = new Date(snapshot.snapshot_date).getFullYear();
+          
+          const existing = acc.find(item => item.period === year.toString());
+          if (existing) {
+            existing.total_revenue += snapshot.total_revenue;
+            existing.total_cost += snapshot.total_cost;
+            existing.profit += snapshot.profit;
+            existing.roi = (existing.profit / existing.total_cost) * 100;
+          } else {
+            acc.push({
+              period: year.toString(),
+              total_revenue: snapshot.total_revenue,
+              total_cost: snapshot.total_cost,
+              profit: snapshot.profit,
+              roi: snapshot.roi
+            });
+          }
+          return acc;
+        }, []);
+        return yearlyData;
+      }
+      default:
+        return data;
+    }
+  };
+
+  const aggregatedData = aggregateData(snapshots);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Financial Overview</h2>
+        <Select value={filterPeriod} onValueChange={(value: 'month' | 'quarter' | 'year') => setFilterPeriod(value)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="month">Monthly</SelectItem>
+            <SelectItem value="quarter">Quarterly</SelectItem>
+            <SelectItem value="year">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-4">Loading financial data...</div>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Revenue vs Cost Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={aggregatedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="period" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                    <Legend />
+                    <Line type="monotone" dataKey="total_revenue" name="Revenue" stroke="#8884d8" />
+                    <Line type="monotone" dataKey="total_cost" name="Cost" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Profit & ROI Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={aggregatedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="period" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip formatter={(value, name) => name === 'roi' ? `${Number(value).toFixed(2)}%` : `$${Number(value).toLocaleString()}`} />
+                    <Legend />
+                    <Line yAxisId="left" type="monotone" dataKey="profit" name="Profit" stroke="#8884d8" />
+                    <Line yAxisId="right" type="monotone" dataKey="roi" name="ROI (%)" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Financial Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cost</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {aggregatedData.map((item: any, index: number) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.period}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          ${item.total_revenue.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          ${item.total_cost.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className={item.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            ${item.profit.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className={item.roi >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {item.roi.toFixed(2)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
@@ -1009,56 +1956,93 @@ const KpiFinancial: React.FC = () => {
   const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
 
+  const verifyConnection = async () => {
+    try {
+      // Test the connection with a simple query
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .limit(1);
+
+      if (error) {
+        console.error('Supabase connection test failed:', error);
+        return false;
+      }
+      console.log('Supabase connection successful');
+      return true;
+    } catch (err) {
+      console.error('Supabase connection error:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
-      const { data: authData, error: authError } = await supabase.auth.getSession();
-      if (authError || !authData.session?.user) {
-        setUserData({ user: null, session: null });
-        setOrganizations([]);
+      try {
+        // Test connection first
+        const isConnected = await verifyConnection();
+        if (!isConnected) {
+          console.error('Unable to connect to Supabase');
+          return;
+        }
+
+        console.log('Fetching initial auth data...');
+        const { data: authData, error: authError } = await supabase.auth.getSession();
+        if (authError || !authData.session?.user) {
+          console.error('Auth error or no user session:', authError);
+          setUserData({ user: null, session: null });
+          setOrganizations([]);
+          setLoading(false);
+          return;
+        }
+        const user = authData.session.user;
+        setUserData({ user, session: authData.session });
+
+        // First get the user's organization_id from the users table
+        console.log('Fetching user organization...');
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userError) {
+          console.error("Error fetching user data:", userError);
+          setOrganizations([]);
+          setLoading(false);
+          return;
+        }
+
+        if (!userData?.organization_id) {
+          console.log("User has no organization assigned");
+          setOrganizations([]);
+          setLoading(false);
+          return;
+        }
+
+        // Then fetch only that specific organization
+        console.log('Fetching organization details...');
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', userData.organization_id)
+          .single();
+
+        if (orgError) {
+          console.error("Error fetching organization:", orgError);
+          setOrganizations([]);
+        } else if (orgData) {
+          console.log('Organization data fetched successfully:', orgData);
+          setOrganizations([orgData]);
+          // Auto-select the organization since user only has one
+          setSelectedOrganizationId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Unexpected error in fetchInitialData:', error);
+      } finally {
         setLoading(false);
-        return;
       }
-      const user = authData.session.user;
-      setUserData({ user, session: authData.session });
-
-      // First get the user's organization_id from the users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      if (userError) {
-        console.error("Error fetching user data:", userError);
-        setOrganizations([]);
-        setLoading(false);
-        return;
-      }
-
-      if (!userData?.organization_id) {
-        console.log("User has no organization assigned");
-        setOrganizations([]);
-        setLoading(false);
-        return;
-      }
-
-      // Then fetch only that specific organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('id', userData.organization_id)
-        .single();
-
-      if (orgError) {
-        console.error("Error fetching organization:", orgError);
-        setOrganizations([]);
-      } else if (orgData) {
-        setOrganizations([orgData]);
-        // Auto-select the organization since user only has one
-        setSelectedOrganizationId(orgData.id);
-      }
-      setLoading(false);
     };
     fetchInitialData();
   }, []);
@@ -1066,88 +2050,188 @@ const KpiFinancial: React.FC = () => {
   useEffect(() => {
     const fetchOrganizationData = async () => {
       if (!selectedOrganizationId) {
+        console.log('No organization selected, skipping data fetch');
         setKpis([]);
         setFinancials([]);
         setDepartmentSpending([]);
         setFinancialSnapshots([]);
         return;
       }
+
       setLoading(true);
+      console.log('Fetching data for organization:', selectedOrganizationId);
 
-      // Fetch financials for the organization
-      const { data: financialData, error: financialError } = await supabase
-        .from('financials')
-        .select('*')
-        .eq('organization_id', selectedOrganizationId);
-      if (financialError) console.error('Error fetching financials:', financialError);
-      setFinancials(financialData || []);
-
-      // Fetch department spending for the organization
-      const { data: departmentData, error: departmentError } = await supabase
-        .from('department_financials')
-        .select('*')
-        .eq('organization_id', selectedOrganizationId);
-      if (departmentError) console.error('Error fetching department spending:', departmentError);
-      setDepartmentSpending(departmentData || []);
-
-      // Fetch financial snapshots for the organization
-      const { data: snapshotData, error: snapshotError } = await supabase
-        .from('financial_snapshots')
-        .select('*')
-        .eq('organization_id', selectedOrganizationId);
-      if (snapshotError) console.error('Error fetching financial snapshots:', snapshotError);
-      setFinancialSnapshots(snapshotData || []);
-
-      const currentFinancials = financialData?.[0];
-      const mockKpis: Kpi[] = [
-        { 
-          id: 'k1', 
-          name: 'Budget Variance', 
-          value: currentFinancials?.cost_variance ?? 'N/A', 
-          unit: '$', 
-          trend: 'down', 
-          change: '-5%',
-          program_id: selectedOrganizationId,
-          metric_type: 'financial',
-          updated_at: new Date().toISOString()
-        },
-        { 
-          id: 'k2', 
-          name: 'ROI', 
-          value: currentFinancials?.roi ?? 'N/A', 
-          unit: '%', 
-          trend: 'up', 
-          change: '+2%',
-          program_id: selectedOrganizationId,
-          metric_type: 'financial',
-          updated_at: new Date().toISOString()
-        },
-        { 
-          id: 'k3', 
-          name: 'Actual Spend', 
-          value: currentFinancials?.actual_budget ?? 'N/A', 
-          unit: '$',
-          trend: '',
-          change: '',
-          program_id: selectedOrganizationId,
-          metric_type: 'financial',
-          updated_at: new Date().toISOString()
-        },
-        { 
-          id: 'k4', 
-          name: 'Forecast Accuracy', 
-          value: 92, 
-          unit: '%',
-          trend: '',
-          change: '',
-          program_id: selectedOrganizationId,
-          metric_type: 'financial',
-          updated_at: new Date().toISOString()
+      try {
+        // Test connection first
+        const isConnected = await verifyConnection();
+        if (!isConnected) {
+          console.error('Unable to connect to Supabase');
+          return;
         }
-      ];
-      setKpis(mockKpis);
-      setLoading(false);
+
+        // Fetch financials for the organization
+        console.log('Fetching financials...');
+        const { data: financialData, error: financialError } = await supabase
+          .from('financials')
+          .select('*')
+          .eq('organization_id', selectedOrganizationId)
+          .single();
+        
+        if (financialError) {
+          console.error('Error fetching financials:', financialError);
+          if (financialError.code === 'PGRST116') {
+            console.log('No financial record found, creating initial record...');
+            const { data: newFinancial, error: insertError } = await supabase
+              .from('financials')
+              .insert([{
+                organization_id: selectedOrganizationId,
+                planned_budget: 0,
+                actual_budget: 0,
+                forecasted_budget: 0,
+                cost_variance: 0,
+                roi: 0
+              }])
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('Error creating initial financial record:', insertError);
+            } else {
+              console.log('Created initial financial record:', newFinancial);
+              setFinancials([newFinancial]);
+            }
+          }
+        } else {
+          console.log('Financial data fetched successfully:', financialData);
+          setFinancials(financialData ? [financialData] : []);
+        }
+
+        // Fetch department spending for the organization
+        console.log('Fetching department spending...');
+        const { data: departmentData, error: departmentError } = await supabase
+          .from('department_financials')
+          .select(`
+            id,
+            organization_id,
+            department_id,
+            month_year,
+            planned_spend,
+            actual_spend,
+            forecasted_spend,
+            created_at
+          `)
+          .eq('organization_id', selectedOrganizationId);
+        
+        if (departmentError) {
+          console.error('Error fetching department spending:', departmentError);
+        } else {
+          console.log('Department spending data fetched successfully:', departmentData);
+          setDepartmentSpending(departmentData?.map(d => ({
+            id: d.id,
+            organization_id: d.organization_id,
+            department_id: d.department_id,
+            month_year: d.month_year,
+            planned_spend: d.planned_spend,
+            actual_spend: d.actual_spend,
+            forecasted_spend: d.forecasted_spend,
+            created_at: d.created_at,
+            spent: d.actual_spend,
+            budget: d.planned_spend
+          })) || []);
+        }
+
+        // Fetch financial snapshots for the organization
+        console.log('Fetching financial snapshots...');
+        const { data: snapshotData, error: snapshotError } = await supabase
+          .from('financial_snapshots')
+          .select(`
+            id,
+            organization_id,
+            snapshot_date,
+            total_budget,
+            total_spent,
+            remaining_budget,
+            cost_variance,
+            roi,
+            created_at
+          `)
+          .eq('organization_id', selectedOrganizationId)
+          .order('snapshot_date', { ascending: true });
+        
+        if (snapshotError) {
+          console.error('Error fetching financial snapshots:', snapshotError);
+        } else {
+          console.log('Financial snapshots fetched successfully:', snapshotData);
+          setFinancialSnapshots(snapshotData?.map(s => ({
+            id: s.id,
+            organization_id: s.organization_id,
+            snapshot_date: s.snapshot_date,
+            total_budget: s.total_budget,
+            total_spent: s.total_spent,
+            remaining_budget: s.remaining_budget,
+            cost_variance: s.cost_variance,
+            roi: s.roi,
+            created_at: s.created_at
+          })) || []);
+        }
+
+        // Update KPIs
+        const currentFinancials = financialData || { cost_variance: 0, roi: 0, actual_budget: 0 };
+        const mockKpis: Kpi[] = [
+          { 
+            id: 'k1', 
+            name: 'Budget Variance', 
+            value: currentFinancials.cost_variance ?? 0, 
+            unit: '$', 
+            trend: 'down', 
+            change: '-5%',
+            program_id: selectedOrganizationId,
+            metric_type: 'financial',
+            updated_at: new Date().toISOString()
+          },
+          { 
+            id: 'k2', 
+            name: 'ROI', 
+            value: currentFinancials.roi ?? 0, 
+            unit: '%', 
+            trend: 'up', 
+            change: '+2%',
+            program_id: selectedOrganizationId,
+            metric_type: 'financial',
+            updated_at: new Date().toISOString()
+          },
+          { 
+            id: 'k3', 
+            name: 'Actual Spend', 
+            value: currentFinancials.actual_budget ?? 0, 
+            unit: '$',
+            trend: '',
+            change: '',
+            program_id: selectedOrganizationId,
+            metric_type: 'financial',
+            updated_at: new Date().toISOString()
+          },
+          { 
+            id: 'k4', 
+            name: 'Forecast Accuracy', 
+            value: 92, 
+            unit: '%',
+            trend: '',
+            change: '',
+            program_id: selectedOrganizationId,
+            metric_type: 'financial',
+            updated_at: new Date().toISOString()
+          }
+        ];
+        setKpis(mockKpis);
+
+      } catch (error) {
+        console.error('Unexpected error in fetchOrganizationData:', error);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchOrganizationData();
   }, [selectedOrganizationId]);
 
@@ -1220,65 +2304,15 @@ const KpiFinancial: React.FC = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {kpis.map((kpi) => <MetricCard key={kpi.id} metric={kpi} />)}
+            {kpis.map((kpi: Kpi) => <MetricCard key={kpi.id} metric={kpi} />)}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Department Spending (Monthly)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {departmentSpending.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={departmentChartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" fontSize={12}/>
-                      <YAxis fontSize={12} tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}/>
-                      <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`}/>
-                      <Legend />
-                      <Bar dataKey="planned" fill="#a78bfa" name="Planned"/>
-                      <Bar dataKey="actual" fill="#82ca9d" name="Actual"/>
-                      <Bar dataKey="forecasted" fill="#facc15" name="Forecasted"/>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    No department spending data available
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <FinancialOverview organizationId={selectedOrganizationId} />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Financial Snapshot Trend</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {financialSnapshots.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={snapshotChartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" fontSize={12}/>
-                      <YAxis fontSize={12} tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}/>
-                      <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`}/>
-                      <Legend />
-                      <Line type="monotone" dataKey="Budget" stroke="#8884d8" activeDot={{ r: 6 }}/>
-                      <Line type="monotone" dataKey="Spent" stroke="#82ca9d" />
-                      <Line type="monotone" dataKey="Remaining" stroke="#fbbf24" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    No financial snapshot data available
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <CostManagementSection programId={null} organizationId={selectedOrganizationId} />
+          <CostManagementSection organizationId={selectedOrganizationId} />
           <InvoiceManagementSection organizationId={selectedOrganizationId} />
+          <RevenueManagementSection organizationId={selectedOrganizationId} />
+          <ProfitSection organizationId={selectedOrganizationId} />
         </>
       )}
     </div>

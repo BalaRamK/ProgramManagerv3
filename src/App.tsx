@@ -35,6 +35,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
+import { OrganizationUserSettings } from './pages/OrganizationUserSettings';
 
 interface FeatureProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -725,7 +726,7 @@ function App() {
           element={
             <ProtectedRoute>
               <Navbar />
-              <Settings />
+              <OrganizationUserSettings />
             </ProtectedRoute>
           }
         />

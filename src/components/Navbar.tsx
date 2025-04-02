@@ -41,7 +41,6 @@ export function Navbar() {
             <NavLink to="/" className="flex items-center">
               <img 
                 src="/src/assets/ProgramMatrix_logo.png" 
-                alt="ProgramMatrix Logo" 
                 className="h-8 w-auto mr-2" 
               />
             </NavLink>

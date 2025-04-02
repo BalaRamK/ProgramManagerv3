@@ -199,11 +199,6 @@ export function Dashboard() {
         <aside className="w-64 bg-white shadow-md z-10 fixed h-full">
           
           <div className="p-6">
-              <img 
-                src={logo} 
-                alt="ProgramMatrix Logo" 
-                className="h-8 w-auto mr-2" 
-              />
           </div>
           <nav className="mt-2">
             <div className="px-4 py-2">
@@ -299,7 +294,7 @@ export function Dashboard() {
         {/* Main Content */}
         <div className="flex-1 ml-64">
           {/* Top Navigation */}
-          <header className="bg-white shadow-sm sticky top-0 z-0">
+          {/*<header className="bg-white shadow-sm sticky top-0 z-0">
             <div className="px-6 py-4 flex items-center justify-between">
               <div className="flex items-center w-1/2">
                 <div className="relative w-full max-w-md">
@@ -307,8 +302,8 @@ export function Dashboard() {
                     type="text" 
                     placeholder="Search..." 
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                  />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />/>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
@@ -329,7 +324,7 @@ export function Dashboard() {
                 </div>
               </div>
             </div>
-          </header>
+          </header>*/}
 
         {/* Main Content Area */}
           <div className="p-6">

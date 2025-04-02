@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Search, Menu as MenuIcon, ExternalLink, ArrowLeft, Edit2, Save, X } from 'lucide-react';
+import { ChevronRight, Search, Menu as MenuIcon, ExternalLink, ArrowLeft, Edit2, Save, X, Plus, Trash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import ReactQuill from 'react-quill';
+import ReactQuill, { ReactQuillProps } from 'react-quill';
 import 'quill/dist/quill.snow.css';
 import styles from '../styles/quill.module.css';
 import logo from '../assets/ProgramMatrix_logo.png';
+import NavNotificationBar from '../components/NavNotificationBar';
+import { Navbar } from '../components/Navbar';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 interface DocSection {
   id: string;
@@ -22,6 +25,10 @@ interface User {
 }
 
 const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
+
+const QuillEditor = React.forwardRef<ReactQuill, ReactQuillProps>((props, ref) => {
+  return <ReactQuill ref={ref} {...props} />;
+});
 
 export default function Documentation() {
   const navigate = useNavigate();
@@ -49,7 +56,10 @@ export default function Documentation() {
         id: session.user.id,
         email: session.user.email || ''
       });
-
+      
+      // Log to confirm email is set
+      console.log("Current user email:", session.user.email);
+      
       // Fetch documentation sections
       const { data, error } = await supabase
         .from('documentation')
@@ -85,6 +95,7 @@ export default function Documentation() {
   const handleSave = async () => {
     if (!currentSection || !isAdmin) return;
     
+    console.log('Saving section:', currentSection.id);
     setSaving(true);
     try {
       const { error } = await supabase
@@ -120,6 +131,102 @@ export default function Documentation() {
       console.error('Error saving documentation:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddSection = async () => {
+    if (!isAdmin) return;
+
+    const newSection: DocSection = {
+      id: uuidv4(), // Generate a UUID for the new section
+      title: 'New Section',
+      content: '',
+      order_number: sections.length + 1,
+    };
+
+    try {
+      const { error } = await supabase
+        .from('documentation')
+        .insert([newSection]);
+
+      if (error) throw error;
+
+      // Refresh the sections
+      const { data } = await supabase
+        .from('documentation')
+        .select('*')
+        .order('order_number');
+
+      if (data) {
+        const organized = organizeHierarchy(data);
+        setSections(organized);
+        setCurrentSection(newSection);
+      }
+    } catch (error) {
+      console.error('Error adding section:', error);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    if (!isAdmin) return;
+
+    try {
+      const { error } = await supabase
+        .from('documentation')
+        .delete()
+        .eq('id', sectionId);
+
+      if (error) throw error;
+
+      // Refresh the sections
+      const { data } = await supabase
+        .from('documentation')
+        .select('*')
+        .order('order_number');
+
+      if (data) {
+        const organized = organizeHierarchy(data);
+        setSections(organized);
+        if (currentSection?.id === sectionId) {
+          setCurrentSection(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting section:', error);
+    }
+  };
+
+  const handleAddChildSection = async (parentId: string) => {
+    if (!isAdmin) return;
+
+    const newSection: DocSection = {
+      id: uuidv4(),
+      title: 'New Subsection',
+      content: '',
+      order_number: sections.length + 1,
+      parent_id: parentId // Set parent ID for hierarchy
+    };
+
+    try {
+      const { error } = await supabase
+        .from('documentation')
+        .insert([newSection]);
+
+      if (error) throw error;
+
+      // Refresh the sections
+      const { data } = await supabase
+        .from('documentation')
+        .select('*')
+        .order('order_number');
+
+      if (data) {
+        const organized = organizeHierarchy(data);
+        setSections(organized);
+        setCurrentSection(newSection);
+      }
+    } catch (error) {
+      console.error('Error adding child section:', error);
     }
   };
 
@@ -207,6 +314,7 @@ export default function Documentation() {
 
   return (
     <div className="flex h-screen bg-white">
+      <Navbar />
       {/* Left Sidebar */}
       <div 
         className={`${
@@ -215,11 +323,6 @@ export default function Documentation() {
       >
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-center mb-4">
-            <img 
-              src={logo} 
-              alt="ProgramMatrix Logo" 
-              className="h-8"
-            />
           </div>
           <div className="relative">
             <input
@@ -239,6 +342,9 @@ export default function Documentation() {
               section={section}
               currentSection={currentSection}
               onSelect={setCurrentSection}
+              user={user}
+              onAddChild={handleAddChildSection}
+              onDelete={handleDeleteSection}
             />
           ))}
         </nav>
@@ -274,13 +380,6 @@ export default function Documentation() {
               title="Toggle navigation menu"
             >
               <MenuIcon size={20} />
-            </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft size={20} />
-              Back to Dashboard
             </button>
           </div>
           <div className="ml-4 flex-1 flex items-center justify-between">
@@ -336,6 +435,26 @@ export default function Documentation() {
                 )}
               </div>
             )}
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleAddSection}
+                  className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Plus size={16} />
+                  Add Section
+                </button>
+                {currentSection && (
+                  <button
+                    onClick={() => handleDeleteSection(currentSection.id)}
+                    className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    <Trash size={16} />
+                    Delete Section
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -346,7 +465,7 @@ export default function Documentation() {
               <div className="prose prose-blue max-w-none">
                 {isEditing ? (
                   <div className={styles.quillWrapper}>
-                    <ReactQuill
+                    <QuillEditor
                       value={editedContent}
                       onChange={setEditedContent}
                       modules={quillModules}
@@ -371,44 +490,85 @@ interface DocNavigationItemProps {
   section: DocSection;
   currentSection: DocSection | null;
   onSelect: (section: DocSection) => void;
+  user: User | null;
+  onAddChild: (parentId: string) => Promise<void>;
+  onDelete: (sectionId: string) => Promise<void>;
 }
 
-function DocNavigationItem({ section, currentSection, onSelect }: DocNavigationItemProps) {
+function DocNavigationItem({ 
+  section, 
+  currentSection, 
+  onSelect, 
+  user,
+  onAddChild,
+  onDelete
+}: DocNavigationItemProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-
   const hasChildren = section.children && section.children.length > 0;
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   return (
     <div className="mb-2">
-      <div
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer ${
-          currentSection?.id === section.id
-            ? 'bg-blue-50 text-blue-700'
-            : 'hover:bg-gray-100 text-gray-700'
-        }`}
-        onClick={() => {
-          onSelect(section);
-          if (hasChildren) {
-            setIsExpanded(!isExpanded);
-          }
-        }}
-      >
-        {hasChildren && (
-          <ChevronRight
-            size={16}
-            className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-          />
+      <div className="flex items-center gap-2">
+        <div
+          className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer ${
+            currentSection?.id === section.id
+              ? 'bg-blue-50 text-blue-700'
+              : 'hover:bg-gray-100 text-gray-700'
+          }`}
+          onClick={() => {
+            onSelect(section);
+            if (hasChildren) {
+              setIsExpanded(!isExpanded);
+            }
+          }}
+        >
+          {hasChildren && (
+            <ChevronRight
+              size={16}
+              className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          )}
+          <span className="flex-1">{section.title}</span>
+        </div>
+        
+        {isAdmin && (
+          <div className="flex items-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild(section.id);
+              }}
+              title="Add subsection"
+              className="p-1 text-gray-500 hover:text-blue-600"
+            >
+              <Plus size={14} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(section.id);
+              }}
+              title="Delete section"
+              className="p-1 text-gray-500 hover:text-red-600"
+            >
+              <Trash size={14} />
+            </button>
+          </div>
         )}
-        <span className="flex-1">{section.title}</span>
       </div>
+      
       {hasChildren && isExpanded && (
-        <div className="ml-4 mt-1">
+        <div className="ml-4 mt-1 border-l-2 border-gray-200 pl-2">
           {section.children?.map((child) => (
             <DocNavigationItem
               key={child.id}
               section={child}
               currentSection={currentSection}
               onSelect={onSelect}
+              user={user}
+              onAddChild={onAddChild}
+              onDelete={onDelete}
             />
           ))}
         </div>

@@ -36,6 +36,7 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { OrganizationUserSettings } from './pages/OrganizationUserSettings';
+import NavNotificationBar from './components/NavNotificationBar';
 
 interface FeatureProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -47,6 +48,7 @@ interface FeatureProps {
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
+
 
 function FeatureCard({ icon: Icon, title, description, benefit }: FeatureProps) {
   return (
@@ -95,7 +97,7 @@ function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white pt-16">
+    <div className="min-h-screen bg-white mt-0">
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-white">
         <div className="absolute inset-0 gradient-bg opacity-5" />
@@ -570,7 +572,8 @@ function HomePage() {
               <h4 className="text-base font-semibold text-white">Contact</h4>
               <ul className="mt-4 space-y-2 text-sm text-gray-400">
                 <li className="flex items-center gap-2">
-                  <Globe2 className="h-4 w-4" /> https://program-matrix.vercel.app/
+                  <MessageSquareIcon className="h-6 w-6" />
+                  balaramakrishnasaikarumanchi0@gmail.com
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone className="h-4 w-4" /> +91 94927 06718
@@ -646,108 +649,111 @@ function App() {
 
   return (
     <Router>
-      <Toaster position="top-right" />
-      <Routes>
-        <Route path="/" element={<><Navbar /><HomePage /></>} />
-        <Route path="/login" element={<><Navbar /><Login /></>} />
-        <Route path="/signup" element={<><Navbar /><Signup /></>} />
-        <Route
-          path="/admin/verification"
-          element={
-            <AdminRoute>
-              <Navbar />
-              <AdminVerification />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/dashboard/*"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/roadmap"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Roadmap />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/kpi"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <KpiFinancial />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/scenario-planning"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <RiskAnalysis />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/ai-chat"
-          element={
-            <ProtectedRoute>
-              <AIChat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/communication-log"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <CommunicationLog />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/document-center"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <DocumentCenter />
-            </ProtectedRoute>
-          }
-        />
-         <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <OrganizationUserSettings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/custom-insights"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <CustomInsights />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/documentation"
-          element={
-            <ProtectedRoute>
-              <Documentation />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <div className="flex flex-col min-h-screen mt-16">
+        <NavNotificationBar />
+        <Toaster position="top-right"/>
+        <Routes>
+          <Route path="/" element={<><Navbar /><HomePage /></>} />
+          <Route path="/login" element={<><Navbar /><Login /></>} />
+          <Route path="/signup" element={<><Navbar /><Signup /></>} />
+          <Route
+            path="/admin/verification"
+            element={
+              <AdminRoute>
+                <Navbar />
+                <AdminVerification />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/dashboard/*"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roadmap"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <Roadmap />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/kpi"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <KpiFinancial />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/scenario-planning"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <RiskAnalysis />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-chat"
+            element={
+              <ProtectedRoute>
+                <AIChat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/communication-log"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <CommunicationLog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/document-center"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <DocumentCenter />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <OrganizationUserSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/custom-insights"
+            element={
+              <ProtectedRoute>
+                <Navbar />
+                <CustomInsights />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documentation"
+            element={
+              <ProtectedRoute>
+                <Documentation />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </div>
     </Router>
   );
 }

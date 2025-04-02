@@ -775,7 +775,7 @@ const CommunicationLog = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 mt-16">
+    <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 flex items-center">
         <MessageSquare className="mr-2" /> Communication Log
       </h1>

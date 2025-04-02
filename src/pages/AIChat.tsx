@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import logo from '../assets/ProgramMatrix_logo.png';
+import { Navbar } from '../components/Navbar';
 
 export default function AIChat() {
   const navigate = useNavigate();
@@ -251,15 +252,9 @@ export default function AIChat() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
+      <Navbar />
       {/* Navigation Bar */}
-      <div className="h-16 border-b border-gray-200 flex items-center px-4 bg-white">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back to Dashboard</span>
-        </button>
+      <div className="h-0 border-b border-gray-200 flex items-center px-4 bg-white">
       </div>
 
       {/* Main Content */}

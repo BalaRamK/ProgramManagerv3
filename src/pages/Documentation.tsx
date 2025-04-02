@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import ReactQuill from 'react-quill';
 import 'quill/dist/quill.snow.css';
 import styles from '../styles/quill.module.css';
+import logo from '../assets/ProgramMatrix_logo.png';
 
 interface DocSection {
   id: string;
@@ -215,7 +216,7 @@ export default function Documentation() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-center mb-4">
             <img 
-              src="/src/assets/ProgramMatrix_logo.png" 
+              src={logo} 
               alt="ProgramMatrix Logo" 
               className="h-8"
             />
@@ -244,11 +245,7 @@ export default function Documentation() {
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <img 
-                src="/src/assets/ProgramMatrix_logo.png" 
-                alt="ProgramMatrix Logo" 
-                className="h-5"
-              />
+              
               <span className="text-sm text-gray-600">v1.0.0</span>
             </div>
             {isAdmin && (
@@ -288,11 +285,7 @@ export default function Documentation() {
           </div>
           <div className="ml-4 flex-1 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src="/src/assets/ProgramMatrix_logo.png" 
-                alt="ProgramMatrix Logo" 
-                className="h-6"
-              />
+
               <h1 className="text-xl font-semibold text-gray-900">
                 {isEditing ? (
                   <input

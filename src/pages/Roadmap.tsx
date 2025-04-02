@@ -328,11 +328,7 @@ function MilestoneDetailView({ milestone, onClose, onEdit, onDelete }: Milestone
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <img 
-                  src="/src/assets/ProgramMatrix_logo.png" 
-                  alt="ProgramMatrix Logo" 
-                  className="h-6 w-auto mr-2" 
-                />
+                
               <h2 className="text-lg font-semibold">{milestone.title}</h2>
               </div>
               <button
@@ -606,11 +602,7 @@ function ProgramDetailView({ program, onClose, onEdit, onDelete }: { program: Pr
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <img 
-                  src="/src/assets/ProgramMatrix_logo.png" 
-                  alt="ProgramMatrix Logo" 
-                  className="h-6 w-auto mr-2" 
-                />
+                
                 <h2 className="text-lg font-semibold">{program.name}</h2>
               </div>
               <button 
@@ -750,11 +742,7 @@ function GoalModal({ programId, onClose, onSubmit }: GoalModalProps) {
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-6 w-96">
         <div className="flex items-center mb-4">
-          <img 
-            src="/src/assets/ProgramMatrix_logo.png" 
-            alt="ProgramMatrix Logo" 
-            className="h-6 w-auto mr-2" 
-          />
+         
           <h3 className="text-lg font-medium">Add New Goal</h3>
         </div>
         <form onSubmit={handleSubmit}>
@@ -1734,11 +1722,7 @@ export function Roadmap() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
         <div className="mb-8">
           <div className="flex items-center">
-            <img 
-              src="/src/assets/ProgramMatrix_logo.png" 
-              alt="ProgramMatrix Logo" 
-              className="h-10 w-auto mr-3" 
-            />
+
             <div>
           <h1 className="text-2xl font-bold text-gray-900">Program Roadmap</h1>
           <p className="text-gray-600">Strategic timeline and milestones for your program</p>
@@ -1821,11 +1805,7 @@ export function Roadmap() {
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg shadow-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center mb-4">
-                <img 
-                  src="/src/assets/ProgramMatrix_logo.png" 
-                  alt="ProgramMatrix Logo" 
-                  className="h-6 w-auto mr-2" 
-                />
+
                 <h3 className="text-lg font-medium">Add New Milestone</h3>
               </div>
               <form onSubmit={handleSubmitMilestone}>
@@ -2026,11 +2006,7 @@ export function Roadmap() {
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg shadow-lg p-6 w-96">
               <div className="flex items-center mb-4">
-                <img 
-                  src="/src/assets/ProgramMatrix_logo.png" 
-                  alt="ProgramMatrix Logo" 
-                  className="h-6 w-auto mr-2" 
-                />
+
                 <h3 className="text-lg font-medium">Add New Program</h3>
               </div>
               <div>

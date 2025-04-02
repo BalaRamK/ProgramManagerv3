@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserOrgManagement } from '../components/UserOrgManagement';
+import logo from '../assets/ProgramMatrix_logo.png';
 import { Navbar } from '../components/Navbar';
 
 interface ProgramStats {
@@ -199,7 +200,7 @@ export function Dashboard() {
           
           <div className="p-6">
               <img 
-                src="/src/assets/ProgramMatrix_logo.png" 
+                src={logo} 
                 alt="ProgramMatrix Logo" 
                 className="h-8 w-auto mr-2" 
               />

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/ProgramMatrix_logo.png';
 
 export default function AIChat() {
   const navigate = useNavigate();
@@ -226,7 +227,13 @@ export default function AIChat() {
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Dashboard</span>
           </button>
+          <img 
+              src={logo} 
+              alt="ProgramMatrix Logo" 
+              className="h-8"
+            />
         </div>
+            
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-600 mb-4">{error}</p>

@@ -40,7 +40,7 @@ export function Navbar() {
           <div className="flex items-center">
             <NavLink to="/" className="flex items-center">
               <img 
-                src="/src/assets/ProgramMatrix_logo.png" 
+                src="./src/assets/ProgramMatrix_logo.png" 
                 className="h-8 w-auto mr-2" 
               />
             </NavLink>

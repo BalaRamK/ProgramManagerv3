@@ -14,6 +14,7 @@ import {
   Folder,
   Settings as SettingsIcon,
 } from 'lucide-react';
+import logo from '../assets/ProgramMatrix_logo.png';
 
 export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
@@ -40,7 +41,8 @@ export function Navbar() {
           <div className="flex items-center">
             <NavLink to="/" className="flex items-center">
               <img 
-                src="./src/assets/ProgramMatrix_logo.png" 
+                src={logo} 
+                alt="ProgramMatrix Logo" 
                 className="h-8 w-auto mr-2" 
               />
             </NavLink>

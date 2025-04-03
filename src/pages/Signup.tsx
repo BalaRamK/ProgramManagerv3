@@ -46,56 +46,73 @@ export function Signup() {
     setLoading(true);
 
     try {
-      // 1. Create auth user first
+      // 1. Check if user already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('pending_users')
+        .select('status')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        throw new Error('An account with this email already exists');
+      }
+
+      // 2. Create the pending_users record
+      const { error: pendingError } = await supabase
+        .from('pending_users')
+        .insert([
+          {
+            email,
+            name,
+            status: 'pending_admin_approval'
+          }
+        ])
+        .select()
+        .single();
+
+      if (pendingError) {
+        throw pendingError;
+      }
+
+      // 3. Create auth user with disabled sign in
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             name: name,
-            status: 'pending_admin_approval',
-          }
+            status: 'pending_admin_approval'
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
       if (signUpError) {
+        // Clean up pending_users if auth fails
+        await supabase
+          .from('pending_users')
+          .delete()
+          .eq('email', email);
         throw signUpError;
       }
 
       if (!signUpData.user) {
+        // Clean up pending_users if no user created
+        await supabase
+          .from('pending_users')
+          .delete()
+          .eq('email', email);
         throw new Error('Failed to create user');
       }
 
-      // 2. Try to create the pending_users record
-      try {
-        const { error: pendingError } = await supabase
-          .from('pending_users')
-          .insert([
-            {
-              email,
-              name,
-              status: 'pending_admin_approval',
-              auth_user_id: signUpData.user.id
-            }
-          ]);
-
-        if (pendingError) {
-          console.error('Error creating pending user record:', pendingError);
-          // Continue with signup even if this fails
-        }
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        // Continue with signup even if this fails
-      }
-
-      // 3. Try to send admin notification
+      // 4. Send admin notification
       try {
         await supabase.functions.invoke('send-admin-notification', {
           body: { adminEmail: ADMIN_EMAIL, userEmail: email }
         });
       } catch (notifyError) {
         console.error('Admin notification error:', notifyError);
-        // Continue with signup even if this fails
+        // Continue anyway as this is not critical
       }
 
       setSuccess(true);

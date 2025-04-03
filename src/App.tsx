@@ -107,14 +107,14 @@ function HomePage() {
               {/* Left Column - Dashboard Preview */}
               <div className="bg-gray-50 rounded-xl shadow-lg overflow-hidden">
                 {/* Dashboard Header */}
-                <div className="bg-gray-900 p-6 text-white">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-gray-900 p-3 text-white">
+                  <div className="flex items-center justify-between mb-2">
                     <h2 className="text-xl font-semibold">Program Overview</h2>
                     <div className="flex items-center space-x-2">
                       <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center">
                         <UsersIcon className="h-5 w-5 text-violet-600" />
                       </div>
-                      <span className="text-sm font-medium">Program Manager</span>
+                      <span className="text-sm font-medium mt-0">Program Manager</span>
                     </div>
                   </div>
                 </div>

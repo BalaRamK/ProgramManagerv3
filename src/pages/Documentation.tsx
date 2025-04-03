@@ -98,11 +98,12 @@ export default function Documentation() {
     console.log('Saving section:', currentSection.id);
     setSaving(true);
     try {
+      // Make sure the content is stored exactly as formatted in the editor
       const { error } = await supabase
         .from('documentation')
         .update({
           title: editedTitle,
-          content: editedContent,
+          content: editedContent, // Raw HTML from Quill
         })
         .eq('id', currentSection.id);
 
@@ -290,28 +291,6 @@ export default function Documentation() {
     'link', 'image', 'code-block'
   ];
 
-  const editorWrapperStyle = {
-    '& .ql-container': {
-      minHeight: '200px',
-      fontSize: '16px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    },
-    '& .ql-editor': {
-      minHeight: '200px',
-      fontSize: '16px',
-      lineHeight: '1.5',
-    },
-    '& .ql-toolbar.ql-snow': {
-      border: '1px solid #e2e8f0',
-      borderRadius: '0.375rem 0.375rem 0 0',
-    },
-    '& .ql-container.ql-snow': {
-      border: '1px solid #e2e8f0',
-      borderTop: 'none',
-      borderRadius: '0 0 0.375rem 0.375rem',
-    },
-  } as const;
-
   return (
     <div className="flex h-screen bg-white">
       <Navbar />
@@ -464,7 +443,7 @@ export default function Documentation() {
             {currentSection && (
               <div className="prose prose-blue max-w-none">
                 {isEditing ? (
-                  <div className={styles.quillWrapper}>
+                  <div className={styles.quillWrapper} data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false">
                     <QuillEditor
                       value={editedContent}
                       onChange={setEditedContent}
@@ -475,7 +454,10 @@ export default function Documentation() {
                     />
                   </div>
                 ) : (
-                  <div dangerouslySetInnerHTML={{ __html: currentSection.content }} />
+                  <div 
+                    className={styles.contentDisplay}
+                    dangerouslySetInnerHTML={{ __html: currentSection.content }} 
+                  />
                 )}
               </div>
             )}

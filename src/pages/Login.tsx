@@ -15,62 +15,56 @@ export function Login() {
     setLoading(true);
 
     try {
-      // First, check if the user exists in pending_users
+      // 1. Check pending_users status
       const { data: pendingUser, error: pendingError } = await supabase
         .from('pending_users')
         .select('status')
         .eq('email', email)
         .single();
 
-      if (pendingError && pendingError.code !== 'PGRST116') { // PGRST116 is "not found"
+      if (pendingError && pendingError.code !== 'PGRST116') {
         console.error('Error checking pending user:', pendingError);
         setError('An error occurred while checking your account status.');
         return;
       }
 
-      if (pendingUser) {
-        if (pendingUser.status === 'pending_admin_approval') {
-          setError('Your account is pending admin approval. You will receive an email once approved.');
-          return;
-        } else if (pendingUser.status === 'rejected') {
-          setError('Your account has been rejected. Please contact support for more information.');
-          return;
-        }
+      if (pendingUser?.status === 'pending_admin_approval') {
+        setError('Your account is pending admin approval. You will receive an email once approved.');
+        return;
       }
 
-      // Attempt to sign in
-      const { error: signInError, data: { user } } = await supabase.auth.signInWithPassword({
+      if (pendingUser?.status === 'rejected') {
+        setError('Your account has been rejected. Please contact support for more information.');
+        return;
+      }
+
+      // 2. Attempt to sign in
+      const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (signInError) {
-        if (signInError.message.includes('Invalid login credentials')) {
-          setError('Invalid email or password. Please try again.');
-        } else if (signInError.message.includes('Email not confirmed')) {
-          setError('Please verify your email before logging in.');
-        } else {
-          setError(signInError.message);
-        }
-        return;
-      }
+      if (signInError) throw signInError;
 
       if (!user) {
-        setError('An error occurred during login. Please try again.');
-        return;
-      }
-
-      // Check if email is verified
-      if (!user.email_confirmed_at) {
-        setError('Please verify your email before logging in.');
-        return;
+        throw new Error('No user returned from login');
       }
 
       // Successfully authenticated
       navigate('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      if (err instanceof Error) {
+        if (err.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password');
+        } else if (err.message.includes('Email not confirmed')) {
+          setError('Please verify your email before logging in');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

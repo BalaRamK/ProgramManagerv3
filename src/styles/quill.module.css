@@ -1,3 +1,48 @@
+/* Draft.js editor styling */
+.draftEditor {
+  min-height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  background: white;
+}
+
+.draftEditor :global(.public-DraftStyleDefault-ul) {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+  list-style-type: disc;
+}
+
+.draftEditor :global(.public-DraftStyleDefault-ol) {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+  list-style-type: decimal;
+}
+
+.draftEditor :global(.public-DraftStyleDefault-header-one) {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+}
+
+.draftEditor :global(.public-DraftStyleDefault-header-two) {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+}
+
+.draftEditor :global(.public-DraftStyleDefault-header-three) {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+/* Improve Quill list rendering */
 .quillWrapper :global(.ql-container) {
   min-height: 200px;
   font-size: 16px;
@@ -10,6 +55,23 @@
   line-height: 1.5;
 }
 
+/* Ensure bullets and numbered lists appear correctly in the editor */
+.quillWrapper :global(.ql-editor ul) {
+  list-style-type: disc !important;
+  margin-left: 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.quillWrapper :global(.ql-editor ol) {
+  list-style-type: decimal !important;
+  margin-left: 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.quillWrapper :global(.ql-editor li) {
+  display: list-item !important;
+}
+
 .quillWrapper :global(.ql-toolbar.ql-snow) {
   border: 1px solid #e2e8f0;
   border-radius: 0.375rem 0.375rem 0 0;
@@ -19,4 +81,27 @@
   border: 1px solid #e2e8f0;
   border-top: none;
   border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* Style for content display */
+.contentDisplay {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Ensure bullets and numbered lists appear correctly in the display view */
+.contentDisplay :global(ul) {
+  list-style-type: disc !important;
+  margin-left: 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.contentDisplay :global(ol) {
+  list-style-type: decimal !important;
+  margin-left: 1.5em !important;
+  padding-left: 0 !important;
+}
+
+.contentDisplay :global(li) {
+  display: list-item !important;
 } 

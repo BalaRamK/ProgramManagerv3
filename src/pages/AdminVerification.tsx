@@ -245,7 +245,7 @@ export function AdminVerification() {
     try {
       setLoading(true);
       
-      // Update user role in pending_users
+      // 1. Update pending_users status
       const { error: updateError } = await supabase
         .from('pending_users')
         .update({ 
@@ -254,27 +254,22 @@ export function AdminVerification() {
           modules: ['roadmap', 'kpi', 'scenario', 'communication', 'documents', 'insights'],
           storage_limit: 100 * 1024 * 1024 // 100MB for free tier
         })
-        .eq('id', user.id);
+        .eq('email', user.email);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      // Send verification email
+      // 2. Send verification email
       const { error: emailError } = await supabase
         .functions.invoke('send-verification-email', {
           body: { userEmail: user.email }
         });
 
-      if (emailError) {
-        throw emailError;
-      }
+      if (emailError) throw emailError;
 
-      // Log the action
+      // 3. Log the action
       await logAction(user.id, 'user_approved', `User ${user.email} approved`);
 
       await fetchPendingUsers();
-      await fetchActiveUsers();
     } catch (err) {
       console.error('Failed to approve user:', err);
       setError('Failed to approve user');

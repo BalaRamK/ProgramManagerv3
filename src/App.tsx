@@ -72,6 +72,59 @@ function FeatureCard({ icon: Icon, title, description, benefit }: FeatureProps) 
   );
 }
 
+function PayPalButton() {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://www.paypal.com/sdk/js?client-id=BAAIUjRaMZUIvr5D_GMrTEd7GGJzyd-RT2uJAtOo0rhQLi6TbmmmKYEoGTW19ggggyOLq-e3aAc_CAlVh0&components=hosted-buttons&disable-funding=venmo&currency=USD";
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      paypal.HostedButtons({
+        hostedButtonId: "UHWR58Y523RKN"
+      }).render("#paypal-container-UHWR58Y523RKN");
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  return (
+    <div>
+      <style>
+        {`.pp-UHWR58Y523RKN {
+          text-align: center;
+          border: none;
+          border-radius: 0.25rem;
+          min-width: 11.625rem;
+          padding: 0 2rem;
+          height: 2.625rem;
+          font-weight: bold;
+          background-color: #FFD140;
+          color: #000000;
+          font-family: "Helvetica Neue", Arial, sans-serif;
+          font-size: 1rem;
+          line-height: 1.25rem;
+          cursor: pointer;
+        }`}
+      </style>
+      <form 
+        action="https://www.paypal.com/ncp/payment/UHWR58Y523RKN" 
+        method="post" 
+        target="_blank" 
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}
+      >
+        <input className="pp-UHWR58Y523RKN" type="submit" value="Contribute" />
+        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+        <section>
+          Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style={{ height: '0.875rem', verticalAlign: 'middle' }} />
+        </section>
+      </form>
+    </div>
+  );
+}
+
 function HomePage() {
   // Mock data similar to what's in Dashboard.tsx
   const programStats = {
@@ -98,6 +151,9 @@ function HomePage() {
 
   return (
     <div className="min-h-screen bg-white mt-0">
+       <script 
+  src="https://www.paypal.com/sdk/js?client-id=BAAIUjRaMZUIvr5D_GMrTEd7GGJzyd-RT2uJAtOo0rhQLi6TbmmmKYEoGTW19ggggyOLq-e3aAc_CAlVh0&components=hosted-buttons&disable-funding=venmo&currency=USD">
+</script>
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-white">
         <div className="absolute inset-0 gradient-bg opacity-5" />
@@ -389,12 +445,7 @@ function HomePage() {
                   >
                     Get Started
                   </Link>
-                  <button
-                    onClick={() => window.open('https://programmatrix.lemonsqueezy.com/buy/22cc536d-8562-49d1-853f-bbb4a7b997ab', '_blank')}
-                    className="block w-full bg-green-100 text-green-700 text-center py-3 px-4 rounded-lg hover:bg-green-200 transition-colors duration-200"
-                  >
-                    Contribute
-                  </button>
+                  <PayPalButton />
                 </div>
               </div>
             </div>
@@ -586,6 +637,7 @@ function HomePage() {
           </div>
         </div>
       </footer>
+      
     </div>
   );
 }

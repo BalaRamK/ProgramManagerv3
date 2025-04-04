@@ -1710,7 +1710,8 @@ function ProfitSection({ organizationId }: { organizationId: string | null }) {
 function FinancialOverview({ organizationId }: { organizationId: string | null }) {
   const [financials, setFinancials] = useState<Financial[]>([]);
   const [snapshots, setSnapshots] = useState<FinancialSnapshot[]>([]);
-  const [filterPeriod, setFilterPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchFinancialData = async () => {
@@ -1722,6 +1723,53 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
 
     setLoading(true);
     try {
+      // Calculate date range based on selected year and month
+      const startDate = new Date(selectedYear, selectedMonth || 0, 1);
+      const endDate = new Date(selectedYear, selectedMonth !== null ? selectedMonth + 1 : 12, 0);
+
+      // Fetch snapshots within the date range
+      const { data: snapshotData, error: snapshotError } = await supabase
+        .from('financial_snapshots')
+        .select(`
+          id,
+          organization_id,
+          snapshot_date,
+          total_revenue,
+          total_cost,
+          profit,
+          total_budget,
+          total_spent,
+          remaining_budget,
+          cost_variance,
+          roi,
+          created_at
+        `)
+        .eq('organization_id', organizationId)
+        .gte('snapshot_date', startDate.toISOString().split('T')[0])
+        .lte('snapshot_date', endDate.toISOString().split('T')[0])
+        .order('snapshot_date', { ascending: true });
+
+      if (snapshotError) {
+        console.error('Error fetching snapshots:', snapshotError);
+        setSnapshots([]);
+      } else {
+        console.log('Financial snapshots fetched successfully:', snapshotData);
+        setSnapshots(snapshotData?.map(s => ({
+          id: s.id,
+          organization_id: s.organization_id,
+          snapshot_date: s.snapshot_date,
+          total_revenue: s.total_revenue || 0,
+          total_cost: s.total_cost || 0,
+          profit: s.profit || 0,
+          total_budget: s.total_budget || 0,
+          total_spent: s.total_spent || 0,
+          remaining_budget: s.remaining_budget || 0,
+          cost_variance: s.cost_variance || 0,
+          roi: s.roi || 0,
+          created_at: s.created_at
+        })) || []);
+      }
+
       // Fetch current financial data
       const { data: financialData, error: financialError } = await supabase
         .from('financials')
@@ -1730,38 +1778,9 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
 
       if (financialError) {
         console.error('Error fetching financials:', financialError);
+        setFinancials([]);
       } else {
         setFinancials(financialData || []);
-      }
-
-      // Calculate date range based on filter period
-      const now = new Date();
-      let startDate = new Date();
-      switch (filterPeriod) {
-        case 'month':
-          startDate.setMonth(now.getMonth() - 12); // Last 12 months
-          break;
-        case 'quarter':
-          startDate.setMonth(now.getMonth() - 12); // Last 4 quarters (12 months)
-          break;
-        case 'year':
-          startDate.setFullYear(now.getFullYear() - 3); // Last 3 years
-          break;
-      }
-
-      // Fetch snapshots within the date range
-      const { data: snapshotData, error: snapshotError } = await supabase
-        .from('financial_snapshots')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .gte('snapshot_date', startDate.toISOString().split('T')[0])
-        .lte('snapshot_date', now.toISOString().split('T')[0])
-        .order('snapshot_date', { ascending: true });
-
-      if (snapshotError) {
-        console.error('Error fetching snapshots:', snapshotError);
-      } else {
-        setSnapshots(snapshotData || []);
       }
     } catch (error) {
       console.error('Error in fetchFinancialData:', error);
@@ -1772,84 +1791,105 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
 
   useEffect(() => {
     fetchFinancialData();
-  }, [organizationId, filterPeriod]);
+  }, [organizationId, selectedYear, selectedMonth]);
 
   const aggregateData = (data: FinancialSnapshot[]) => {
-    if (data.length === 0) return [];
+    console.log('Aggregating data:', data);
+    if (data.length === 0) {
+      console.log('No data to aggregate');
+      return [];
+    }
 
-    switch (filterPeriod) {
-      case 'month':
-        return data;
-      case 'quarter': {
-        const quarterlyData = data.reduce((acc: any[], snapshot) => {
-          const date = new Date(snapshot.snapshot_date);
-          const quarter = Math.floor(date.getMonth() / 3);
-          const year = date.getFullYear();
-          const key = `${year}-Q${quarter + 1}`;
-          
-          const existing = acc.find(item => item.period === key);
-          if (existing) {
-            existing.total_revenue += snapshot.total_revenue;
-            existing.total_cost += snapshot.total_cost;
-            existing.profit += snapshot.profit;
-            existing.roi = (existing.profit / existing.total_cost) * 100;
-          } else {
-            acc.push({
-              period: key,
-              total_revenue: snapshot.total_revenue,
-              total_cost: snapshot.total_cost,
-              profit: snapshot.profit,
-              roi: snapshot.roi
-            });
-          }
-          return acc;
-        }, []);
-        return quarterlyData;
-      }
-      case 'year': {
-        const yearlyData = data.reduce((acc: any[], snapshot) => {
-          const year = new Date(snapshot.snapshot_date).getFullYear();
-          
-          const existing = acc.find(item => item.period === year.toString());
-          if (existing) {
-            existing.total_revenue += snapshot.total_revenue;
-            existing.total_cost += snapshot.total_cost;
-            existing.profit += snapshot.profit;
-            existing.roi = (existing.profit / existing.total_cost) * 100;
-          } else {
-            acc.push({
-              period: year.toString(),
-              total_revenue: snapshot.total_revenue,
-              total_cost: snapshot.total_cost,
-              profit: snapshot.profit,
-              roi: snapshot.roi
-            });
-          }
-          return acc;
-        }, []);
-        return yearlyData;
-      }
-      default:
-        return data;
+    if (selectedMonth !== null) {
+      // Monthly view - show daily data
+      const dailyData = data.map(snapshot => {
+        const result = {
+          period: new Date(snapshot.snapshot_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+          total_revenue: snapshot.total_revenue,
+          total_cost: snapshot.total_cost,
+          profit: snapshot.profit,
+          roi: snapshot.roi
+        };
+        console.log('Daily data point:', result);
+        return result;
+      });
+      console.log('Aggregated daily data:', dailyData);
+      return dailyData;
+    } else {
+      // Yearly view - aggregate by month
+      const monthlyData = Array.from({ length: 12 }, (_, month) => {
+        const monthSnapshots = data.filter(snapshot => {
+          const snapshotDate = new Date(snapshot.snapshot_date);
+          return snapshotDate.getMonth() === month;
+        });
+
+        console.log(`Processing month ${month + 1}, found ${monthSnapshots.length} snapshots`);
+
+        if (monthSnapshots.length === 0) {
+          console.log(`No data for month ${month + 1}`);
+          return null;
+        }
+
+        const totalRevenue = monthSnapshots.reduce((sum, s) => sum + (s.total_revenue || 0), 0);
+        const totalCost = monthSnapshots.reduce((sum, s) => sum + (s.total_cost || 0), 0);
+        const profit = monthSnapshots.reduce((sum, s) => sum + (s.profit || 0), 0);
+        const avgRoi = monthSnapshots.reduce((sum, s) => sum + (s.roi || 0), 0) / monthSnapshots.length;
+
+        const result = {
+          period: new Date(selectedYear, month).toLocaleDateString('en-US', { month: 'short' }),
+          total_revenue: totalRevenue,
+          total_cost: totalCost,
+          profit: profit,
+          roi: avgRoi
+        };
+        console.log(`Monthly aggregate for ${result.period}:`, result);
+        return result;
+      }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      console.log('Final aggregated monthly data:', monthlyData);
+      return monthlyData;
     }
   };
 
   const aggregatedData = aggregateData(snapshots);
 
+  // Generate year options (last 5 years)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Financial Overview</h2>
-        <Select value={filterPeriod} onValueChange={(value: 'month' | 'quarter' | 'year') => setFilterPeriod(value)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">Monthly</SelectItem>
-            <SelectItem value="quarter">Quarterly</SelectItem>
-            <SelectItem value="year">Yearly</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-4">
+          <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select 
+            value={selectedMonth !== null ? selectedMonth.toString() : 'all'} 
+            onValueChange={(value) => setSelectedMonth(value === 'all' ? null : parseInt(value))}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All Months" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={i.toString()}>
+                  {new Date(2000, i).toLocaleString('default', { month: 'long' })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (
@@ -1914,27 +1954,35 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {aggregatedData.map((item: any, index: number) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.period}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                          ${item.total_revenue.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                          ${item.total_cost.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          <span className={item.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            ${item.profit.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                          <span className={item.roi >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            {item.roi.toFixed(2)}%
-                          </span>
+                    {aggregatedData.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                          No data available for the selected period
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      aggregatedData.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.period}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            ${item.total_revenue.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            ${item.total_cost.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            <span className={item.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              ${item.profit.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            <span className={item.roi >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {item.roi.toFixed(2)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -193,6 +193,39 @@ interface Profit {
   roi: string;
 }
 
+interface ProfitRawData {
+  id: string;
+  organization_id: string;
+  year: number;
+  month: number;
+  revenue: number;
+  resource_cost: number;
+  vendor_cost: number;
+  misc_cost: number;
+  total_cost: number;
+  profit: number;
+  roi: number;
+  debug_role?: string;
+  debug_user_id?: string;
+  debug_user_org_id?: string;
+}
+
+// Add this interface near the top of the file with other interfaces
+interface MonthlyProfitData {
+  period: string;
+  total_revenue: number;
+  total_cost: number;
+  profit: number;
+  roi: number;
+}
+
+// Add new interface for navigation items
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
 function MetricCard({ metric }: { metric: Kpi }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1601,6 +1634,7 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
 function ProfitSection({ organizationId }: { organizationId: string | null }) {
   const [profits, setProfits] = useState<Profit[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfits = async () => {
@@ -1610,7 +1644,21 @@ function ProfitSection({ organizationId }: { organizationId: string | null }) {
       }
 
       setLoading(true);
+      setError(null);
+      
       try {
+        console.log('Fetching profits for organization:', organizationId);
+        
+        // First verify the current user's session
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError) {
+          console.error('Auth error:', authError);
+          setError('Authentication error. Please try logging in again.');
+          return;
+        }
+        console.log('Current user:', session?.user?.id);
+
+        // Fetch the actual data
         const { data, error } = await supabase
           .from('profits_monthly')
           .select('*')
@@ -1618,14 +1666,48 @@ function ProfitSection({ organizationId }: { organizationId: string | null }) {
           .order('year', { ascending: false })
           .order('month', { ascending: false });
 
+        console.log('Profits query result:', { data, error });
+
         if (error) {
           console.error('Error fetching profits:', error);
+          setError(`Error fetching profit data: ${error.message}`);
+          setProfits([]);
+        } else if (!data || data.length === 0) {
+          console.log('No profit data found for organization:', organizationId);
+          
+          // Double check if data exists in raw table
+          const { data: rawData, error: rawError } = await supabase
+            .from('profits_monthly_raw')
+            .select('count(*)')
+            .eq('organization_id', organizationId);
+            
+          console.log('Raw table check:', { rawData, rawError });
+          
           setProfits([]);
         } else {
-          setProfits(data || []);
+          console.log('Processing profit data:', data);
+          
+          // Transform the data to match the Profit interface
+          const transformedData = data.map(row => ({
+            id: row.id,
+            organization_id: row.organization_id,
+            year: row.year,
+            month: row.month,
+            revenue: row.revenue.toString(),
+            resource_cost: row.resource_cost.toString(),
+            vendor_cost: row.vendor_cost.toString(),
+            misc_cost: row.misc_cost.toString(),
+            total_cost: row.total_cost.toString(),
+            profit: row.profit.toString(),
+            roi: row.roi.toString()
+          }));
+
+          console.log('Transformed profit data:', transformedData);
+          setProfits(transformedData);
         }
       } catch (err) {
         console.error('Error in fetchProfits:', err);
+        setError('An unexpected error occurred while fetching profit data.');
         setProfits([]);
       } finally {
         setLoading(false);
@@ -1649,6 +1731,8 @@ function ProfitSection({ organizationId }: { organizationId: string | null }) {
       <h2 className="text-lg font-semibold mb-6">Profit Analysis</h2>
       {loading ? (
         <div className="text-center text-gray-500">Loading profit data...</div>
+      ) : error ? (
+        <div className="text-center text-red-500">{error}</div>
       ) : profits.length === 0 ? (
         <div className="text-center text-gray-500">No profit data available.</div>
       ) : (
@@ -1709,81 +1793,84 @@ function ProfitSection({ organizationId }: { organizationId: string | null }) {
 
 function FinancialOverview({ organizationId }: { organizationId: string | null }) {
   const [financials, setFinancials] = useState<Financial[]>([]);
-  const [snapshots, setSnapshots] = useState<FinancialSnapshot[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profitData, setProfitData] = useState<MonthlyProfitData[]>([]);
 
   const fetchFinancialData = async () => {
     if (!organizationId) {
       setFinancials([]);
-      setSnapshots([]);
+      setProfitData([]);
+      return;
+    }
+
+    // Don't fetch data for future years
+    if (selectedYear > currentYear) {
+      console.log('Selected year is in the future, skipping data fetch');
+      setProfitData([]);
       return;
     }
 
     setLoading(true);
     try {
-      // Calculate date range based on selected year and month
-      const startDate = new Date(selectedYear, selectedMonth || 0, 1);
-      const endDate = new Date(selectedYear, selectedMonth !== null ? selectedMonth + 1 : 12, 0);
+      console.log('Fetching profit data for:', { organizationId, selectedYear, selectedMonth });
 
-      // Fetch snapshots within the date range
-      const { data: snapshotData, error: snapshotError } = await supabase
-        .from('financial_snapshots')
-        .select(`
-          id,
-          organization_id,
-          snapshot_date,
-          total_revenue,
-          total_cost,
-          profit,
-          total_budget,
-          total_spent,
-          remaining_budget,
-          cost_variance,
-          roi,
-          created_at
-        `)
+      // Build the query
+      let query = supabase
+        .from('profits_monthly')
+        .select('*')
         .eq('organization_id', organizationId)
-        .gte('snapshot_date', startDate.toISOString().split('T')[0])
-        .lte('snapshot_date', endDate.toISOString().split('T')[0])
-        .order('snapshot_date', { ascending: true });
+        .eq('year', selectedYear);
 
-      if (snapshotError) {
-        console.error('Error fetching snapshots:', snapshotError);
-        setSnapshots([]);
-      } else {
-        console.log('Financial snapshots fetched successfully:', snapshotData);
-        setSnapshots(snapshotData?.map(s => ({
-          id: s.id,
-          organization_id: s.organization_id,
-          snapshot_date: s.snapshot_date,
-          total_revenue: s.total_revenue || 0,
-          total_cost: s.total_cost || 0,
-          profit: s.profit || 0,
-          total_budget: s.total_budget || 0,
-          total_spent: s.total_spent || 0,
-          remaining_budget: s.remaining_budget || 0,
-          cost_variance: s.cost_variance || 0,
-          roi: s.roi || 0,
-          created_at: s.created_at
-        })) || []);
+      // Add month filter if a specific month is selected
+      if (selectedMonth !== null) {
+        query = query.eq('month', selectedMonth + 1); // Add 1 because months in DB are 1-based
       }
 
-      // Fetch current financial data
-      const { data: financialData, error: financialError } = await supabase
-        .from('financials')
-        .select('*')
-        .eq('organization_id', organizationId);
+      // Execute query
+      const { data: profitsData, error: profitsError } = await query.order('month', { ascending: true });
 
-      if (financialError) {
-        console.error('Error fetching financials:', financialError);
-        setFinancials([]);
+      if (profitsError) {
+        console.error('Error fetching profits:', profitsError);
+        setProfitData([]);
       } else {
-        setFinancials(financialData || []);
+        console.log('Fetched profits data:', profitsData);
+        
+        // Transform the data for the charts with proper type conversion
+        let monthlyData: MonthlyProfitData[];
+        
+        if (selectedMonth !== null) {
+          // If a specific month is selected, only show that month's data
+          const monthData = profitsData?.[0] || null;
+          monthlyData = monthData ? [{
+            period: new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            total_revenue: Number(monthData.revenue) || 0,
+            total_cost: Number(monthData.total_cost) || 0,
+            profit: Number(monthData.profit) || 0,
+            roi: Number(monthData.roi) || 0
+          }] : [];
+        } else {
+          // Show all months for the selected year
+          monthlyData = Array.from({ length: 12 }, (_, monthIndex) => {
+            const monthData = profitsData?.find(p => p.month === monthIndex + 1) || null;
+            return {
+              period: new Date(selectedYear, monthIndex).toLocaleDateString('en-US', { month: 'short' }),
+              total_revenue: monthData ? Number(monthData.revenue) : 0,
+              total_cost: monthData ? Number(monthData.total_cost) : 0,
+              profit: monthData ? Number(monthData.profit) : 0,
+              roi: monthData ? Number(monthData.roi) : 0
+            };
+          });
+        }
+
+        console.log('Transformed monthly data:', monthlyData);
+        setProfitData(monthlyData);
       }
     } catch (error) {
       console.error('Error in fetchFinancialData:', error);
+      setProfitData([]);
     } finally {
       setLoading(false);
     }
@@ -1793,68 +1880,7 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
     fetchFinancialData();
   }, [organizationId, selectedYear, selectedMonth]);
 
-  const aggregateData = (data: FinancialSnapshot[]) => {
-    console.log('Aggregating data:', data);
-    if (data.length === 0) {
-      console.log('No data to aggregate');
-      return [];
-    }
-
-    if (selectedMonth !== null) {
-      // Monthly view - show daily data
-      const dailyData = data.map(snapshot => {
-        const result = {
-          period: new Date(snapshot.snapshot_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
-          total_revenue: snapshot.total_revenue,
-          total_cost: snapshot.total_cost,
-          profit: snapshot.profit,
-          roi: snapshot.roi
-        };
-        console.log('Daily data point:', result);
-        return result;
-      });
-      console.log('Aggregated daily data:', dailyData);
-      return dailyData;
-    } else {
-      // Yearly view - aggregate by month
-      const monthlyData = Array.from({ length: 12 }, (_, month) => {
-        const monthSnapshots = data.filter(snapshot => {
-          const snapshotDate = new Date(snapshot.snapshot_date);
-          return snapshotDate.getMonth() === month;
-        });
-
-        console.log(`Processing month ${month + 1}, found ${monthSnapshots.length} snapshots`);
-
-        if (monthSnapshots.length === 0) {
-          console.log(`No data for month ${month + 1}`);
-          return null;
-        }
-
-        const totalRevenue = monthSnapshots.reduce((sum, s) => sum + (s.total_revenue || 0), 0);
-        const totalCost = monthSnapshots.reduce((sum, s) => sum + (s.total_cost || 0), 0);
-        const profit = monthSnapshots.reduce((sum, s) => sum + (s.profit || 0), 0);
-        const avgRoi = monthSnapshots.reduce((sum, s) => sum + (s.roi || 0), 0) / monthSnapshots.length;
-
-        const result = {
-          period: new Date(selectedYear, month).toLocaleDateString('en-US', { month: 'short' }),
-          total_revenue: totalRevenue,
-          total_cost: totalCost,
-          profit: profit,
-          roi: avgRoi
-        };
-        console.log(`Monthly aggregate for ${result.period}:`, result);
-        return result;
-      }).filter((item): item is NonNullable<typeof item> => item !== null);
-
-      console.log('Final aggregated monthly data:', monthlyData);
-      return monthlyData;
-    }
-  };
-
-  const aggregatedData = aggregateData(snapshots);
-
-  // Generate year options (last 5 years)
-  const currentYear = new Date().getFullYear();
+  // Generate year options (current year and past years only)
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
@@ -1903,7 +1929,7 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={aggregatedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={profitData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" />
                     <YAxis />
@@ -1922,7 +1948,7 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={aggregatedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={profitData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" />
                     <YAxis yAxisId="left" />
@@ -1954,14 +1980,14 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {aggregatedData.length === 0 ? (
+                    {profitData.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                           No data available for the selected period
                         </td>
                       </tr>
                     ) : (
-                      aggregatedData.map((item, index) => (
+                      profitData.map((item: MonthlyProfitData, index: number) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.period}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
@@ -1994,7 +2020,46 @@ function FinancialOverview({ organizationId }: { organizationId: string | null }
   );
 }
 
+// Add NavigationMenu component
+function NavigationMenu({ activeSection, onSectionChange }: { 
+  activeSection: string; 
+  onSectionChange: (section: string) => void;
+}) {
+  const navItems: NavItem[] = [
+    { id: 'overview', label: 'Overview', icon: <BarChart3 className="h-4 w-4" aria-hidden="true" /> },
+    { id: 'financial-overview', label: 'Financial Overview', icon: <DollarSign className="h-4 w-4" aria-hidden="true" /> },
+    { id: 'cost-management', label: 'Cost Management', icon: <TrendingDown className="h-4 w-4" aria-hidden="true" /> },
+    { id: 'invoice-management', label: 'Invoice Management', icon: <Clock className="h-4 w-4" aria-hidden="true" /> },
+    { id: 'revenue-management', label: 'Revenue Management', icon: <TrendingUp className="h-4 w-4" aria-hidden="true" /> },
+    { id: 'profit-analysis', label: 'Profit Analysis', icon: <Users className="h-4 w-4" aria-hidden="true" /> },
+  ];
+
+  return (
+    <div className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-[64px] overflow-y-auto">
+      <nav className="p-4 space-y-1" aria-label="Financial sections navigation">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSectionChange(item.id)}
+            className={`w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-medium rounded-lg text-left transition-colors ${
+              activeSection === item.id
+                ? 'bg-violet-100 text-violet-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label={`Navigate to ${item.label} section`}
+            aria-current={activeSection === item.id ? 'page' : undefined}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
 const KpiFinancial: React.FC = () => {
+  // Group all useState hooks together at the top
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [financials, setFinancials] = useState<Financial[]>([]);
   const [departmentSpending, setDepartmentSpending] = useState<DepartmentFinancial[]>([]);
@@ -2003,6 +2068,184 @@ const KpiFinancial: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState('overview');
+  const [yearlyMetrics, setYearlyMetrics] = useState<{
+    totalProfit: number;
+    totalRoi: number;
+    totalCost: number;
+    profitIncrease: number;
+    profitIncreasePercentage: number;
+  }>({
+    totalProfit: 0,
+    totalRoi: 0,
+    totalCost: 0,
+    profitIncrease: 0,
+    profitIncreasePercentage: 0
+  });
+
+  const calculateYearlyMetrics = async (organizationId: string) => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const lastYear = currentYear - 1;
+
+      console.log('Calculating metrics for:', { organizationId, currentYear, lastYear });
+
+      // Fetch current year data with proper type conversion
+      const { data: currentYearData, error: currentYearError } = await supabase
+        .from('profits_monthly')
+        .select('profit, revenue, total_cost')
+        .eq('organization_id', organizationId)
+        .eq('year', currentYear);
+
+      if (currentYearError) {
+        console.error('Error fetching current year data:', currentYearError);
+        return;
+      }
+
+      console.log('Current year data:', currentYearData);
+
+      // Fetch previous year data with proper type conversion
+      const { data: previousYearData, error: previousYearError } = await supabase
+        .from('profits_monthly')
+        .select('profit')
+        .eq('organization_id', organizationId)
+        .eq('year', lastYear);
+
+      if (previousYearError) {
+        console.error('Error fetching previous year data:', previousYearError);
+        return;
+      }
+
+      console.log('Previous year data:', previousYearData);
+
+      // Calculate metrics with proper type handling
+      const currentYearMetrics = currentYearData?.reduce((acc, curr) => ({
+        totalProfit: acc.totalProfit + (Number(curr.profit) || 0),
+        totalRevenue: acc.totalRevenue + (Number(curr.revenue) || 0),
+        totalCost: acc.totalCost + (Number(curr.total_cost) || 0)
+      }), { totalProfit: 0, totalRevenue: 0, totalCost: 0 });
+
+      const previousYearTotalProfit = previousYearData?.reduce((acc, curr) => 
+        acc + (Number(curr.profit) || 0), 0) || 0;
+
+      console.log('Calculated metrics:', { currentYearMetrics, previousYearTotalProfit });
+
+      const profitIncrease = (currentYearMetrics?.totalProfit || 0) - previousYearTotalProfit;
+      const profitIncreasePercentage = previousYearTotalProfit !== 0 
+        ? ((profitIncrease / Math.abs(previousYearTotalProfit)) * 100)
+        : 0;
+
+      const totalRoi = currentYearMetrics?.totalRevenue !== 0
+        ? ((currentYearMetrics?.totalProfit || 0) / (currentYearMetrics?.totalRevenue || 1)) * 100
+        : 0;
+
+      const metrics = {
+        totalProfit: currentYearMetrics?.totalProfit || 0,
+        totalRoi: totalRoi,
+        totalCost: currentYearMetrics?.totalCost || 0,
+        profitIncrease,
+        profitIncreasePercentage
+      };
+
+      console.log('Setting yearly metrics:', metrics);
+      setYearlyMetrics(metrics);
+
+    } catch (error) {
+      console.error('Error calculating yearly metrics:', error);
+      // Set default values on error
+      setYearlyMetrics({
+        totalProfit: 0,
+        totalRoi: 0,
+        totalCost: 0,
+        profitIncrease: 0,
+        profitIncreasePercentage: 0
+      });
+    }
+  };
+
+  // Combine verification and initial data fetching into a single useEffect
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const isConnected = await verifyConnection();
+        if (!isConnected) {
+          console.error('Unable to connect to Supabase');
+          return;
+        }
+
+        console.log('Fetching initial auth data...');
+        const { data: authData, error: authError } = await supabase.auth.getSession();
+        if (authError || !authData.session?.user) {
+          console.error('Auth error or no user session:', authError);
+          setUserData({ user: null, session: null });
+          setOrganizations([]);
+          return;
+        }
+        const user = authData.session.user;
+        setUserData({ user, session: authData.session });
+
+        console.log('Fetching user organization...');
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userError || !userData?.organization_id) {
+          console.error("Error fetching user data:", userError);
+          setOrganizations([]);
+          return;
+        }
+
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', userData.organization_id)
+          .single();
+
+        if (orgError) {
+          console.error("Error fetching organization:", orgError);
+          setOrganizations([]);
+        } else if (orgData) {
+          console.log('Organization data fetched successfully:', orgData);
+          setOrganizations([orgData]);
+          setSelectedOrganizationId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Unexpected error in fetchInitialData:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  // Handle organization data fetching
+  useEffect(() => {
+    const fetchOrganizationData = async () => {
+      if (!selectedOrganizationId) {
+        console.log('No organization selected, skipping data fetch');
+        setKpis([]);
+        setFinancials([]);
+        setDepartmentSpending([]);
+        setFinancialSnapshots([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await calculateYearlyMetrics(selectedOrganizationId);
+      } catch (error) {
+        console.error('Error fetching organization data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizationData();
+  }, [selectedOrganizationId]);
 
   const verifyConnection = async () => {
     try {
@@ -2023,265 +2266,6 @@ const KpiFinancial: React.FC = () => {
       return false;
     }
   };
-
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        // Test connection first
-        const isConnected = await verifyConnection();
-        if (!isConnected) {
-          console.error('Unable to connect to Supabase');
-          return;
-        }
-
-        console.log('Fetching initial auth data...');
-        const { data: authData, error: authError } = await supabase.auth.getSession();
-        if (authError || !authData.session?.user) {
-          console.error('Auth error or no user session:', authError);
-          setUserData({ user: null, session: null });
-          setOrganizations([]);
-          setLoading(false);
-          return;
-        }
-        const user = authData.session.user;
-        setUserData({ user, session: authData.session });
-
-        // First get the user's organization_id from the users table
-        console.log('Fetching user organization...');
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('organization_id')
-          .eq('id', user.id)
-          .single();
-
-        if (userError) {
-          console.error("Error fetching user data:", userError);
-          setOrganizations([]);
-          setLoading(false);
-          return;
-        }
-
-        if (!userData?.organization_id) {
-          console.log("User has no organization assigned");
-          setOrganizations([]);
-          setLoading(false);
-          return;
-        }
-
-        // Then fetch only that specific organization
-        console.log('Fetching organization details...');
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('id', userData.organization_id)
-          .single();
-
-        if (orgError) {
-          console.error("Error fetching organization:", orgError);
-          setOrganizations([]);
-        } else if (orgData) {
-          console.log('Organization data fetched successfully:', orgData);
-          setOrganizations([orgData]);
-          // Auto-select the organization since user only has one
-          setSelectedOrganizationId(orgData.id);
-        }
-      } catch (error) {
-        console.error('Unexpected error in fetchInitialData:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    const fetchOrganizationData = async () => {
-      if (!selectedOrganizationId) {
-        console.log('No organization selected, skipping data fetch');
-        setKpis([]);
-        setFinancials([]);
-        setDepartmentSpending([]);
-        setFinancialSnapshots([]);
-        return;
-      }
-
-      setLoading(true);
-      console.log('Fetching data for organization:', selectedOrganizationId);
-
-      try {
-        // Test connection first
-        const isConnected = await verifyConnection();
-        if (!isConnected) {
-          console.error('Unable to connect to Supabase');
-          return;
-        }
-
-        // Fetch financials for the organization
-        console.log('Fetching financials...');
-        const { data: financialData, error: financialError } = await supabase
-          .from('financials')
-          .select('*')
-          .eq('organization_id', selectedOrganizationId)
-          .single();
-        
-        if (financialError) {
-          console.error('Error fetching financials:', financialError);
-          if (financialError.code === 'PGRST116') {
-            console.log('No financial record found, creating initial record...');
-            const { data: newFinancial, error: insertError } = await supabase
-              .from('financials')
-              .insert([{
-                organization_id: selectedOrganizationId,
-                planned_budget: 0,
-                actual_budget: 0,
-                forecasted_budget: 0,
-                cost_variance: 0,
-                roi: 0
-              }])
-              .select()
-              .single();
-            
-            if (insertError) {
-              console.error('Error creating initial financial record:', insertError);
-            } else {
-              console.log('Created initial financial record:', newFinancial);
-              setFinancials([newFinancial]);
-            }
-          }
-        } else {
-          console.log('Financial data fetched successfully:', financialData);
-          setFinancials(financialData ? [financialData] : []);
-        }
-
-        // Fetch department spending for the organization
-        console.log('Fetching department spending...');
-        const { data: departmentData, error: departmentError } = await supabase
-          .from('department_financials')
-          .select(`
-            id,
-            organization_id,
-            department_id,
-            month_year,
-            planned_spend,
-            actual_spend,
-            forecasted_spend,
-            created_at
-          `)
-          .eq('organization_id', selectedOrganizationId);
-        
-        if (departmentError) {
-          console.error('Error fetching department spending:', departmentError);
-        } else {
-          console.log('Department spending data fetched successfully:', departmentData);
-          setDepartmentSpending(departmentData?.map(d => ({
-            id: d.id,
-            organization_id: d.organization_id,
-            department_id: d.department_id,
-            month_year: d.month_year,
-            planned_spend: d.planned_spend,
-            actual_spend: d.actual_spend,
-            forecasted_spend: d.forecasted_spend,
-            created_at: d.created_at,
-            spent: d.actual_spend,
-            budget: d.planned_spend
-          })) || []);
-        }
-
-        // Fetch financial snapshots for the organization
-        console.log('Fetching financial snapshots...');
-        const { data: snapshotData, error: snapshotError } = await supabase
-          .from('financial_snapshots')
-          .select(`
-            id,
-            organization_id,
-            snapshot_date,
-            total_budget,
-            total_spent,
-            remaining_budget,
-            cost_variance,
-            roi,
-            created_at
-          `)
-          .eq('organization_id', selectedOrganizationId)
-          .order('snapshot_date', { ascending: true });
-        
-        if (snapshotError) {
-          console.error('Error fetching financial snapshots:', snapshotError);
-        } else {
-          console.log('Financial snapshots fetched successfully:', snapshotData);
-          setFinancialSnapshots(snapshotData?.map(s => ({
-            id: s.id,
-            organization_id: s.organization_id,
-            snapshot_date: s.snapshot_date,
-            total_budget: s.total_budget,
-            total_spent: s.total_spent,
-            remaining_budget: s.remaining_budget,
-            cost_variance: s.cost_variance,
-            roi: s.roi,
-            created_at: s.created_at
-          })) || []);
-        }
-
-        // Update KPIs
-        const currentFinancials = financialData || { cost_variance: 0, roi: 0, actual_budget: 0 };
-        const mockKpis: Kpi[] = [
-          { 
-            id: 'k1', 
-            name: 'Budget Variance', 
-            value: currentFinancials.cost_variance ?? 0, 
-            unit: '$', 
-            trend: 'down', 
-            change: '-5%',
-            program_id: selectedOrganizationId,
-            metric_type: 'financial',
-            updated_at: new Date().toISOString()
-          },
-          { 
-            id: 'k2', 
-            name: 'ROI', 
-            value: currentFinancials.roi ?? 0, 
-            unit: '%', 
-            trend: 'up', 
-            change: '+2%',
-            program_id: selectedOrganizationId,
-            metric_type: 'financial',
-            updated_at: new Date().toISOString()
-          },
-          { 
-            id: 'k3', 
-            name: 'Actual Spend', 
-            value: currentFinancials.actual_budget ?? 0, 
-            unit: '$',
-            trend: '',
-            change: '',
-            program_id: selectedOrganizationId,
-            metric_type: 'financial',
-            updated_at: new Date().toISOString()
-          },
-          { 
-            id: 'k4', 
-            name: 'Forecast Accuracy', 
-            value: 92, 
-            unit: '%',
-            trend: '',
-            change: '',
-            program_id: selectedOrganizationId,
-            metric_type: 'financial',
-            updated_at: new Date().toISOString()
-          }
-        ];
-        setKpis(mockKpis);
-
-      } catch (error) {
-        console.error('Unexpected error in fetchOrganizationData:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrganizationData();
-  }, [selectedOrganizationId]);
 
   const departmentChartData = departmentSpending.map(d => ({
     name: `Dept ${d.department_id.substring(0, 6)}...`,
@@ -2324,45 +2308,143 @@ const KpiFinancial: React.FC = () => {
     </div>
   );
 
+  // Add scroll into view function
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setActiveSection(sectionId);
+  };
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Financial KPIs</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage and track financial metrics, costs, and invoices
-          </p>
+    <div className="flex min-h-screen bg-gray-50">
+      <NavigationMenu activeSection={activeSection} onSectionChange={scrollToSection} />
+      <div className="ml-64"> {/* Main content area with margin for fixed nav */}
+        <div className="p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl font-semibold tracking-tight">Financial KPIs</h1>
+              <p className="text-sm text-muted-foreground">
+                Manage and track financial metrics, costs, and invoices
+              </p>
+            </div>
+
+            <OrganizationSelector />
+
+            {!selectedOrganizationId ? (
+              <Card>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {organizations.length === 0 
+                    ? "You don't have any organization assigned. Please contact your administrator."
+                    : "Please select an organization to view its financial details."}
+                </CardContent>
+              </Card>
+            ) : loading ? (
+              <div className="flex items-center justify-center p-6">
+                <div className="text-center text-muted-foreground">Loading organization data...</div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div id="overview" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Total Profit (Current Year)</p>
+                        <p className="text-2xl font-bold mt-1">
+                          ${yearlyMetrics.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className={`flex items-center ${yearlyMetrics.profitIncreasePercentage >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {yearlyMetrics.profitIncreasePercentage >= 0 ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5" />
+                        )}
+                        <span className="text-sm font-medium ml-1">
+                          {yearlyMetrics.profitIncreasePercentage >= 0 ? '+' : ''}
+                          {yearlyMetrics.profitIncreasePercentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Total ROI</p>
+                        <p className="text-2xl font-bold mt-1">
+                          {yearlyMetrics.totalRoi.toFixed(2)}%
+                        </p>
+                      </div>
+                      <div className={`flex items-center ${yearlyMetrics.totalRoi >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {yearlyMetrics.totalRoi >= 0 ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Total Cost</p>
+                        <p className="text-2xl font-bold mt-1">
+                          ${yearlyMetrics.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">YoY Profit Change</p>
+                        <p className="text-2xl font-bold mt-1">
+                          ${yearlyMetrics.profitIncrease.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className={`flex items-center ${yearlyMetrics.profitIncrease >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {yearlyMetrics.profitIncrease >= 0 ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5" />
+                        )}
+                        <span className="text-sm font-medium ml-1">
+                          {yearlyMetrics.profitIncreasePercentage >= 0 ? '+' : ''}
+                          {yearlyMetrics.profitIncreasePercentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="financial-overview">
+                  <FinancialOverview organizationId={selectedOrganizationId} />
+                </div>
+
+                <div id="cost-management">
+                  <CostManagementSection organizationId={selectedOrganizationId} />
+                </div>
+
+                <div id="invoice-management">
+                  <InvoiceManagementSection organizationId={selectedOrganizationId} />
+                </div>
+
+                <div id="revenue-management">
+                  <RevenueManagementSection organizationId={selectedOrganizationId} />
+                </div>
+
+                <div id="profit-analysis">
+                  <ProfitSection organizationId={selectedOrganizationId} />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      <OrganizationSelector />
-
-      {!selectedOrganizationId ? (
-        <Card>
-          <CardContent className="pt-6 text-center text-muted-foreground">
-            {organizations.length === 0 
-              ? "You don't have any organization assigned. Please contact your administrator."
-              : "Please select an organization to view its financial details."}
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <div className="flex items-center justify-center p-6">
-          <div className="text-center text-muted-foreground">Loading organization data...</div>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {kpis.map((kpi: Kpi) => <MetricCard key={kpi.id} metric={kpi} />)}
-          </div>
-
-          <FinancialOverview organizationId={selectedOrganizationId} />
-
-          <CostManagementSection organizationId={selectedOrganizationId} />
-          <InvoiceManagementSection organizationId={selectedOrganizationId} />
-          <RevenueManagementSection organizationId={selectedOrganizationId} />
-          <ProfitSection organizationId={selectedOrganizationId} />
-        </>
-      )}
     </div>
   );
 };

@@ -292,6 +292,16 @@ export function AdminVerification() {
         throw updateError;
       }
 
+      // Delete user from auth.users
+      const { error: deleteAuthError } = await supabase
+        .functions.invoke('delete-auth-user', {
+          body: { userEmail: user.email }
+        });
+
+      if (deleteAuthError) {
+        throw deleteAuthError;
+      }
+
       // Send rejection email
       const { error: emailError } = await supabase
         .functions.invoke('send-rejection-email', {
@@ -303,7 +313,7 @@ export function AdminVerification() {
       }
 
       // Log the action
-      await logAction(user.id, 'user_rejected', `User ${user.email} rejected`);
+      await logAction(user.id, 'user_rejected', `User ${user.email} rejected and deleted from auth`);
 
       await fetchPendingUsers();
     } catch (err) {

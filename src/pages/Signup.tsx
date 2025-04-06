@@ -46,35 +46,7 @@ export function Signup() {
     setLoading(true);
 
     try {
-      // 1. Check if user already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('pending_users')
-        .select('status')
-        .eq('email', email)
-        .single();
-
-      if (existingUser) {
-        throw new Error('An account with this email already exists');
-      }
-
-      // 2. Create the pending_users record
-      const { error: pendingError } = await supabase
-        .from('pending_users')
-        .insert([
-          {
-            email,
-            name,
-            status: 'pending_admin_approval'
-          }
-        ])
-        .select()
-        .single();
-
-      if (pendingError) {
-        throw pendingError;
-      }
-
-      // 3. Create auth user with disabled sign in
+      // 1. Create auth user first
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -88,31 +60,27 @@ export function Signup() {
       });
 
       if (signUpError) {
-        // Clean up pending_users if auth fails
-        await supabase
-          .from('pending_users')
-          .delete()
-          .eq('email', email);
         throw signUpError;
       }
 
       if (!signUpData.user) {
-        // Clean up pending_users if no user created
-        await supabase
-          .from('pending_users')
-          .delete()
-          .eq('email', email);
         throw new Error('Failed to create user');
       }
 
-      // 4. Send admin notification
-      try {
-        await supabase.functions.invoke('send-admin-notification', {
-          body: { adminEmail: ADMIN_EMAIL, userEmail: email }
+      // 2. Create the pending_users record using the database function
+      const { data: pendingData, error: pendingError } = await supabase
+        .rpc('create_pending_user', {
+          user_email: email,
+          user_name: name,
+          user_id: signUpData.user.id
         });
-      } catch (notifyError) {
-        console.error('Admin notification error:', notifyError);
-        // Continue anyway as this is not critical
+
+      if (pendingError) {
+        throw pendingError;
+      }
+
+      if (!pendingData?.success) {
+        throw new Error(pendingData?.message || 'Failed to create pending user');
       }
 
       setSuccess(true);
@@ -138,6 +106,7 @@ export function Signup() {
               <p>Your account is pending admin approval.</p>
               <p>You will receive an email once your account is approved.</p>
               <p>After approval, you'll need to verify your email before logging in.</p>
+              <p className="text-sm text-gray-500">Please check your email for the verification link.</p>
             </div>
             <div className="mt-6">
               <button

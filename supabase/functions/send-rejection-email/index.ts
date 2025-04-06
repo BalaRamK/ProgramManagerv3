@@ -1,11 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400', // 24 hours
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400'
 }
 
 serve(async (req) => {
@@ -13,7 +12,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders,
+      headers: corsHeaders
     })
   }
 
@@ -24,21 +23,34 @@ serve(async (req) => {
       throw new Error('Email is required')
     }
 
-    // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    if (!RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not configured')
+    }
 
-    // Send rejection email
-    const { error } = await supabaseClient.auth.admin.sendRawUserActionEmail({
-      email: userEmail,
-      action: 'rejection',
-      redirectTo: `${Deno.env.get('SITE_URL')}/auth/callback`,
+    // Send email using Resend
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: 'ProgramMatrix <noreply@programmatrix.com>',
+        to: userEmail,
+        subject: 'Program Matrix Registration Status',
+        html: `
+          <h2>Program Matrix Registration Update</h2>
+          <p>Thank you for your interest in Program Matrix.</p>
+          <p>After reviewing your registration request, we regret to inform you that we are unable to approve your account at this time.</p>
+          <p>If you believe this was in error or would like to discuss this further, please contact our support team.</p>
+          <p>Best regards,<br>The Program Matrix Team</p>
+        `,
+      }),
     })
 
-    if (error) {
-      throw error
+    if (!res.ok) {
+      throw new Error('Failed to send email')
     }
 
     return new Response(
@@ -49,6 +61,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Error in send-rejection-email:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

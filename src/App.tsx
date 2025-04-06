@@ -109,18 +109,7 @@ function PayPalButton() {
           cursor: pointer;
         }`}
       </style>
-      <form 
-        action="https://www.paypal.com/ncp/payment/UHWR58Y523RKN" 
-        method="post" 
-        target="_blank" 
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}
-      >
-        <input className="pp-UHWR58Y523RKN" type="submit" value="Contribute" />
-        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
-        <section>
-          Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style={{ height: '0.875rem', verticalAlign: 'middle' }} />
-        </section>
-      </form>
+      
     </div>
   );
 }

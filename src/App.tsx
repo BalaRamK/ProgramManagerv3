@@ -80,7 +80,7 @@ function PayPalButton() {
     document.body.appendChild(script);
 
     script.onload = () => {
-      paypal.HostedButtons({
+      (window as any).paypal.HostedButtons({
         hostedButtonId: "UHWR58Y523RKN"
       }).render("#paypal-container-UHWR58Y523RKN");
     };
@@ -690,7 +690,7 @@ function App() {
 
   return (
     <Router>
-      <div className="flex flex-col min-h-screen mt-16">
+      <div className="flex flex-col min-h-screen">
         <NavNotificationBar />
         <Toaster position="top-right"/>
         <Routes>

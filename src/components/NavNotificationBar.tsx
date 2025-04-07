@@ -4,7 +4,7 @@ import { PartyPopper } from 'lucide-react';
 
 const NavNotificationBar: React.FC = () => {
   return (
-    <div className="bg-orange-500 text-white text-center py-2 flex items-center justify-center gap-2">
+    <div className="bg-orange-500 text-white text-center py-2 flex items-center justify-center gap-2 mt-16">
       <PartyPopper className="h-5 w-5" />
       <span>This is the Beta version of the platform. For queries or connect, reach out to us on </span>
       <a 

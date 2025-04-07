@@ -7,6 +7,10 @@ import {
   Edit,
   MessageCircle,
   Download,
+  XIcon,
+  Trash2,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase'; // Ensure supabase is imported
 import {
@@ -57,12 +61,43 @@ interface SavedReport {
   created_at: string;
 }
 
+// Add new interface for communication log
+interface CommunicationLog {
+  id: string;
+  type: string;
+  message: string;
+  program_id?: string;
+  milestone_id?: string;
+  risk_id?: string;
+  user_id?: string;
+  organization_id?: string;
+  created_at: string;
+  due_date?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  meeting_name?: string;
+  budget_utilization?: number;
+  progress?: number;
+  completed?: boolean;
+  mitigated?: boolean;
+}
+
+// Add helper function to check due dates
+const getDueStatus = (dueDate: string) => {
+  const now = new Date();
+  const due = new Date(dueDate);
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'overdue';
+  if (diffDays <= 3) return 'upcoming';
+  return 'normal';
+};
+
 const CommunicationLog = () => {
   // Group all useState hooks together at the top
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<CommunicationLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [selectedLog, setSelectedLog] = useState<CommunicationLog | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [programs, setPrograms] = useState<any[]>([]);
@@ -81,14 +116,30 @@ const CommunicationLog = () => {
     dateRange: 'Last 7 Days',
     visualization: 'Bar Chart'
   });
-  const [newLog, setNewLog] = useState({
+  const [newLog, setNewLog] = useState<{
+    type: string;
+    message: string;
+    program_id: string;
+    milestone_id: string;
+    risk_id: string;
+    user_id: string;
+    due_date: string;
+    status: CommunicationLog['status'];
+    meeting_name: string;
+  }>({
     type: '',
     message: '',
     program_id: '',
     milestone_id: '',
     risk_id: '',
     user_id: '',
+    due_date: '',
+    status: 'pending',
+    meeting_name: '',
   });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
+  const [logToDelete, setLogToDelete] = useState<CommunicationLog | null>(null);
+  const [notifications, setNotifications] = useState<CommunicationLog[]>([]);
 
   // Group all useEffect hooks together
   useEffect(() => {
@@ -154,7 +205,10 @@ const CommunicationLog = () => {
             milestone_id,
             risk_id,
             user_id,
-            organization_id
+            organization_id,
+            due_date,
+            status,
+            meeting_name
           `)
           .eq('organization_id', userProfile.organization_id);
 
@@ -162,7 +216,12 @@ const CommunicationLog = () => {
           console.error('Error fetching communication logs:', error);
         } else {
           console.log('Successfully fetched logs:', data);
-          setLogs(data || []);
+          // Ensure status is set for all logs
+          const logsWithStatus = (data || []).map(log => ({
+            ...log,
+            status: log.status || 'pending' as const
+          }));
+          setLogs(logsWithStatus);
         }
       } catch (err) {
         console.error('Failed to fetch logs:', err);
@@ -237,12 +296,46 @@ const CommunicationLog = () => {
     fetchSavedReports();
   }, []);
 
-  // Color mapping for types
-  const typeColors: { [key: string]: string } = {
-    Program: 'bg-blue-100 text-blue-800',
-    Milestone: 'bg-green-100 text-green-800',
-    Risk: 'bg-red-100 text-red-800',
-    User: 'bg-yellow-100 text-yellow-800',
+  // Add useEffect to filter notifications
+  useEffect(() => {
+    const filterNotifications = () => {
+      const relevantLogs = logs.filter(log => {
+        if (!log.due_date) return false;
+        const status = getDueStatus(log.due_date);
+        return status === 'overdue' || status === 'upcoming';
+      });
+      
+      // Sort by due date, overdue first
+      relevantLogs.sort((a, b) => {
+        const statusA = getDueStatus(a.due_date!);
+        const statusB = getDueStatus(b.due_date!);
+        if (statusA === statusB) {
+          return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
+        }
+        return statusA === 'overdue' ? -1 : 1;
+      });
+
+      setNotifications(relevantLogs);
+    };
+
+    filterNotifications();
+  }, [logs]);
+
+  // Add color mapping for types
+  const typeColors: { [key: string]: { bg: string; text: string } } = {
+    Program: { bg: 'bg-blue-100', text: 'text-blue-800' },
+    Milestone: { bg: 'bg-green-100', text: 'text-green-800' },
+    Risk: { bg: 'bg-red-100', text: 'text-red-800' },
+    Meeting: { bg: 'bg-purple-100', text: 'text-purple-800' },
+    General: { bg: 'bg-gray-100', text: 'text-gray-800' }
+  };
+
+  // Add status color mapping
+  const statusColors: { [key: string]: { bg: string; text: string } } = {
+    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+    in_progress: { bg: 'bg-blue-100', text: 'text-blue-800' },
+    completed: { bg: 'bg-green-100', text: 'text-green-800' },
+    cancelled: { bg: 'bg-red-100', text: 'text-red-800' }
   };
 
   // Function to handle sorting
@@ -295,7 +388,7 @@ const CommunicationLog = () => {
   }
 
   // Function to open the edit modal
-  const handleEditClick = (log: any) => {
+  const handleEditClick = (log: CommunicationLog) => {
     setSelectedLog(log);
     setIsModalOpen(true);
   };
@@ -310,6 +403,9 @@ const CommunicationLog = () => {
       milestone_id: '',
       risk_id: '',
       user_id: '',
+      due_date: '',
+      status: 'pending',
+      meeting_name: '',
     });
   };
 
@@ -355,35 +451,28 @@ const CommunicationLog = () => {
         return;
       }
 
-      console.log('User profile for update:', userProfile);
-
-      // Ensure we don't send empty strings for UUID fields
-      const updateData = {
+      const updateData: Partial<CommunicationLog> = {
         type: selectedLog.type || '',
         message: selectedLog.message || '',
-        program_id: selectedLog.program_id || null,
-        milestone_id: selectedLog.milestone_id || null,
-        risk_id: selectedLog.risk_id || null,
+        program_id: selectedLog.program_id || undefined,
+        milestone_id: selectedLog.milestone_id || undefined,
+        risk_id: selectedLog.risk_id || undefined,
         user_id: userData.user.id,
-        organization_id: userProfile.organization_id
+        organization_id: userProfile.organization_id,
+        due_date: selectedLog.due_date,
+        status: selectedLog.status,
+        meeting_name: selectedLog.meeting_name
       };
 
-      console.log('Attempting to update log with data:', updateData);
-      
       const { data, error } = await supabase
         .from('communication_logs')
         .update(updateData)
         .eq('id', selectedLog.id)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error updating log:', error);
-        if (error.code === '42501') {
-          console.error('RLS Policy violation. User:', userData.user.id, 'Organization:', userProfile.organization_id);
-        }
       } else {
-        console.log('Successfully updated log:', data);
         // Refresh logs after update
         const { data: updatedLogs, error: fetchError } = await supabase
           .from('communication_logs')
@@ -396,14 +485,21 @@ const CommunicationLog = () => {
             milestone_id,
             risk_id,
             user_id,
-            organization_id
+            organization_id,
+            due_date,
+            status,
+            meeting_name
           `)
           .eq('organization_id', userProfile.organization_id);
         
         if (fetchError) {
           console.error('Error fetching updated logs:', fetchError);
         } else {
-          setLogs(updatedLogs || []); // Ensure data is not null
+          const logsWithStatus = (updatedLogs || []).map(log => ({
+            ...log,
+            status: (log.status || 'pending') as CommunicationLog['status']
+          }));
+          setLogs(logsWithStatus);
           closeModal();
         }
       }
@@ -414,8 +510,14 @@ const CommunicationLog = () => {
 
   // Function to handle log deletion
   const handleDeleteLog = async () => {
-    if (selectedLog) {
-      const { error } = await supabase.from('communication_logs').delete().eq('id', selectedLog.id);
+    if (!logToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('communication_logs')
+        .delete()
+        .eq('id', logToDelete.id);
+
       if (error) {
         console.error('Error deleting log:', error);
       } else {
@@ -423,21 +525,45 @@ const CommunicationLog = () => {
         const { data: userData } = await supabase.auth.getUser();
         if (!userData.user) return;
         
-        const { data } = await supabase.from('communication_logs').select(`
-          id,
-          type,
-          message,
-          created_at,
-          program_id,
-          milestone_id,
-          risk_id,
-          user_id
-        `)
-        .eq('user_id', userData.user.id);
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', userData.user.id)
+          .single();
+
+        if (!userProfile?.organization_id) return;
+
+        const { data } = await supabase
+          .from('communication_logs')
+          .select(`
+            id,
+            type,
+            message,
+            created_at,
+            program_id,
+            milestone_id,
+            risk_id,
+            user_id,
+            organization_id,
+            due_date,
+            status,
+            meeting_name
+          `)
+          .eq('organization_id', userProfile.organization_id);
         
-        setLogs(data || []); // Ensure data is not null
-        closeModal();
+        if (data) {
+          const logsWithStatus = data.map(log => ({
+            ...log,
+            status: (log.status || 'pending') as CommunicationLog['status']
+          }));
+          setLogs(logsWithStatus);
+        }
       }
+    } catch (err) {
+      console.error('Failed to delete log:', err);
+    } finally {
+      setDeleteConfirmOpen(false);
+      setLogToDelete(null);
     }
   };
 
@@ -499,34 +625,28 @@ const CommunicationLog = () => {
         return;
       }
 
-      console.log('User profile:', userProfile);
-
       // Ensure we don't send empty strings for UUID fields
-      const logData = {
+      const logData: Omit<CommunicationLog, 'id' | 'created_at'> = {
         type: newLog.type || '',
         message: newLog.message || '',
-        program_id: newLog.program_id || null,
-        milestone_id: newLog.milestone_id || null,
-        risk_id: newLog.risk_id || null,
+        program_id: newLog.program_id || undefined,
+        milestone_id: newLog.milestone_id || undefined,
+        risk_id: newLog.risk_id || undefined,
         user_id: userData.user.id,
-        organization_id: userProfile.organization_id
+        organization_id: userProfile.organization_id,
+        due_date: newLog.due_date || undefined,
+        status: newLog.status,
+        meeting_name: newLog.meeting_name || undefined
       };
 
-      console.log('Attempting to insert log with data:', logData);
-      
       const { data, error } = await supabase
         .from('communication_logs')
         .insert([logData])
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error adding log:', error);
-        if (error.code === '42501') {
-          console.error('RLS Policy violation. User:', userData.user.id, 'Organization:', userProfile.organization_id);
-        }
       } else {
-        console.log('Successfully added log:', data);
         // Refresh logs after adding
         const { data: updatedLogs, error: fetchError } = await supabase
           .from('communication_logs')
@@ -539,14 +659,21 @@ const CommunicationLog = () => {
             milestone_id,
             risk_id,
             user_id,
-            organization_id
+            organization_id,
+            due_date,
+            status,
+            meeting_name
           `)
           .eq('organization_id', userProfile.organization_id);
         
         if (fetchError) {
           console.error('Error fetching updated logs:', fetchError);
         } else {
-          setLogs(updatedLogs || []); // Ensure data is not null
+          const logsWithStatus = (updatedLogs || []).map(log => ({
+            ...log,
+            status: (log.status || 'pending') as CommunicationLog['status']
+          }));
+          setLogs(logsWithStatus);
           closeAddModal();
         }
       }
@@ -774,271 +901,532 @@ const CommunicationLog = () => {
     }
   };
 
+  // Add handleDeleteClick function
+  const handleDeleteClick = (log: CommunicationLog) => {
+    setLogToDelete(log);
+    setDeleteConfirmOpen(true);
+  };
+
+  // Add notification bar component
+  const NotificationBar = () => {
+    if (notifications.length === 0) return null;
+
+    return (
+      <div className="mb-6">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500 rounded-lg shadow-sm">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-amber-800 flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                Attention Required
+              </h3>
+              <span className="text-xs text-amber-700 bg-amber-200 px-2 py-1 rounded-full">
+                {notifications.length} {notifications.length === 1 ? 'item' : 'items'}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {notifications.map((log) => {
+                const status = getDueStatus(log.due_date!);
+                return (
+                  <div 
+                    key={log.id} 
+                    className={`flex items-center justify-between p-3 rounded-md ${
+                      status === 'overdue' ? 'bg-red-50' : 'bg-amber-50'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className={`mt-0.5 ${
+                        status === 'overdue' ? 'text-red-500' : 'text-amber-500'
+                      }`}>
+                        <AlertCircle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{log.message}</p>
+                        <div className="mt-1 flex items-center space-x-2">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            status === 'overdue' 
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {status === 'overdue' 
+                              ? 'Overdue'
+                              : 'Due Soon'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Due: {new Date(log.due_date!).toLocaleDateString()}
+                          </span>
+                          {log.type && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${typeColors[log.type]?.bg} ${typeColors[log.type]?.text}`}>
+                              {log.type}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleEditClick(log)}
+                      className="text-gray-400 hover:text-violet-600 p-1 rounded-full hover:bg-violet-50"
+                      title="Edit log"
+                      aria-label="Edit log"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 flex items-center">
-        <MessageSquare className="mr-2" /> Communication Log
-      </h1>
-
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <span className="mr-2">Search:</span>
-          <input 
-            type="text" 
-            value={searchQuery} 
-            onChange={handleSearchChange} 
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            placeholder="Search logs..."
-          />
-        </div>
-        <div className="flex items-center">
-          <span className="mr-2">Filter by Program:</span>
-          <select 
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            onChange={handleProgramChange}
-            title="Filter by Program"
-          >
-            <option value="">All Programs</option>
-            {programs.map(program => (
-              <option key={program.id} value={program.id}>{program.name}</option>
-            ))}
-            </select>
-          </div>
-        <div className="flex items-center">
-          <span className="mr-2">Filter by Milestone:</span>
-          <select 
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            onChange={handleMilestoneChange}
-            title="Filter by Milestone"
-          >
-            <option value="">All Milestones</option>
-            {milestones.map(milestone => (
-              <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
-            ))}
-          </select>
-        </div>
-        <button className="bg-violet-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center" onClick={openAddModal}>
-          <PlusCircle className="mr-2" /> Add Note
+      {/* Add NotificationBar before the header */}
+      <NotificationBar />
+      
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold flex items-center">
+          <MessageSquare className="mr-2 h-6 w-6 text-violet-600" />
+          Communication Log
+        </h1>
+        <button 
+          className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-violet-700 transition-colors"
+          onClick={openAddModal}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Note
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {filteredLogs.length > 0 ? (
-          filteredLogs.map((log) => (
-            <div key={log.id} className={`border-b border-gray-200 last:border-none ${typeColors[log.type]} hover:bg-gray-200`}>
-              <div className="p-4 cursor-pointer">
-              <div className="flex justify-between items-start">
-                <div>
-                    <div className="text-sm font-medium text-gray-900">{log.type} - {log.message}</div>
-                  <div className="text-xs text-gray-500">
-                      {new Date(log.created_at).toLocaleDateString()} | 
-                      {programs.find(p => p.id === log.program_id)?.name && ` Program: ${programs.find(p => p.id === log.program_id)?.name}`} 
-                      {milestones.find(m => m.id === log.milestone_id)?.title && ` | Milestone: ${milestones.find(m => m.id === log.milestone_id)?.title}`} 
-                      {risks.find(r => r.id === log.risk_id)?.description && ` | Risk: ${risks.find(r => r.id === log.risk_id)?.description}`} 
-                      {users.find(u => u.id === log.user_id)?.name && ` | User: ${users.find(u => u.id === log.user_id)?.name}`}
-                    </div>
-                  </div>
-                  <button className="text-gray-500 hover:text-violet-600" aria-label="Edit log" onClick={() => handleEditClick(log)}>
-                  <Edit className="h-4 w-4" />
-                </button>
-                </div>
-                {log.comments && log.comments.length > 0 && (
-                <div className="mt-3">
-                    {log.comments.map((comment: { id: number; user: string; text: string }) => (
-                    <div key={comment.id} className="flex items-start mt-2">
-                      <MessageCircle className="h-4 w-4 mr-2 text-gray-600" />
-                      <div>
-                        <div className="text-xs font-medium text-gray-700">{comment.user}</div>
-                        <div className="text-xs text-gray-500">{comment.text}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
+            <div className="flex-1">
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={handleSearchChange} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="Search logs..."
+              />
+            </div>
+            <div className="flex items-center space-x-4">
+              <select 
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                onChange={handleProgramChange}
+                value={selectedProgram}
+                title="Filter by Program"
+              >
+                <option value="">All Programs</option>
+                {programs.map(program => (
+                  <option key={program.id} value={program.id}>{program.name}</option>
+                ))}
+              </select>
+              <select 
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                onChange={handleMilestoneChange}
+                value={selectedMilestone}
+                title="Filter by Milestone"
+              >
+                <option value="">All Milestones</option>
+                {milestones.map(milestone => (
+                  <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                ))}
+              </select>
             </div>
           </div>
-          ))
-        ) : (
-          <div className="p-4 text-gray-500">No logs found.</div>
-        )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Message
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Due Date
+                </th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[log.type]?.bg} ${typeColors[log.type]?.text}`}>
+                      {log.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{log.message}</div>
+                    {log.meeting_name && (
+                      <div className="text-sm text-gray-500 flex items-center mt-1">
+                        <MessageCircle className="h-4 w-4 mr-1" />
+                        {log.meeting_name}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      {programs.find(p => p.id === log.program_id) && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {programs.find(p => p.id === log.program_id)?.name}
+                        </span>
+                      )}
+                      {milestones.find(m => m.id === log.milestone_id) && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {milestones.find(m => m.id === log.milestone_id)?.title}
+                        </span>
+                      )}
+                      {risks.find(r => r.id === log.risk_id) && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          {risks.find(r => r.id === log.risk_id)?.description}
+                        </span>
+                      )}
+                      <div className="text-xs text-gray-500">
+                        {new Date(log.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[log.status]?.bg} ${statusColors[log.status]?.text}`}>
+                      {log.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {log.due_date && new Date(log.due_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => handleEditClick(log)}
+                        className="text-violet-600 hover:text-violet-900 p-1 rounded-full hover:bg-violet-50"
+                        title="Edit log"
+                        aria-label="Edit log"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(log)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50"
+                        title="Delete log"
+                        aria-label="Delete log"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Modal for Editing Log */}
+      {/* Update the Edit Modal */}
       {isModalOpen && selectedLog && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 className="text-lg font-semibold">Edit Communication Log</h2>
-            <div className="space-y-4 mt-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Type</h3>
-                <input 
-                  type="text" 
-                  value={selectedLog.type} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, type: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  placeholder="Enter type"
-                />
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Edit Communication Log</h2>
+              <button 
+                onClick={closeModal} 
+                className="text-gray-400 hover:text-gray-500"
+                title="Close modal"
+                aria-label="Close edit modal"
+              >
+                <span className="sr-only">Close</span>
+                <XIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <input 
+                    type="text" 
+                    value={selectedLog.type} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, type: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    placeholder="Enter type"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Message</label>
+                  <textarea 
+                    value={selectedLog.message} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, message: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    rows={3}
+                    placeholder="Enter message"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Meeting Name (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={selectedLog.meeting_name || ''} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, meeting_name: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    placeholder="Enter meeting name"
+                  />
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Message</h3>
-                <textarea 
-                  value={selectedLog.message} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, message: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  placeholder="Enter message"
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Program</h3>
-                <select 
-                  value={selectedLog.program_id} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, program_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Program"
-                >
-                  <option value="">Select Program</option>
-                  {programs.map(program => (
-                    <option key={program.id} value={program.id}>{program.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Milestone</h3>
-                <select 
-                  value={selectedLog.milestone_id} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, milestone_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Milestone"
-                >
-                  <option value="">Select Milestone</option>
-                  {milestones.map(milestone => (
-                    <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Risk</h3>
-                <select 
-                  value={selectedLog.risk_id} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, risk_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Risk"
-                >
-                  <option value="">Select Risk</option>
-                  {risks.map(risk => (
-                    <option key={risk.id} value={risk.id}>{risk.description}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">User</h3>
-                <select 
-                  value={selectedLog.user_id} 
-                  onChange={(e) => setSelectedLog({ ...selectedLog, user_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select User"
-                >
-                  <option value="">Select User</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Program</label>
+                  <select 
+                    value={selectedLog.program_id || ''} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, program_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Program"
+                  >
+                    <option value="">Select Program</option>
+                    {programs.map(program => (
+                      <option key={program.id} value={program.id}>{program.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Milestone</label>
+                  <select 
+                    value={selectedLog.milestone_id || ''} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, milestone_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Milestone"
+                  >
+                    <option value="">Select Milestone</option>
+                    {milestones.map(milestone => (
+                      <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Risk</label>
+                  <select 
+                    value={selectedLog.risk_id || ''} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, risk_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Risk"
+                  >
+                    <option value="">Select Risk</option>
+                    {risks.map(risk => (
+                      <option key={risk.id} value={risk.id}>{risk.description}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select 
+                    value={selectedLog.status} 
+                    onChange={(e) => setSelectedLog({ 
+                      ...selectedLog, 
+                      status: e.target.value as CommunicationLog['status']
+                    })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Status"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Due Date and Time</label>
+                  <input 
+                    type="datetime-local" 
+                    value={selectedLog.due_date ? new Date(selectedLog.due_date).toISOString().slice(0, 16) : ''} 
+                    onChange={(e) => setSelectedLog({ ...selectedLog, due_date: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Due date and time"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end mt-4">
-              <button onClick={handleUpdateLog} className="bg-blue-500 text-white rounded px-4 py-2">Update</button>
-              <button onClick={handleDeleteLog} className="bg-red-500 text-white rounded px-4 py-2 ml-2">Delete</button>
-              <button onClick={closeModal} className="bg-gray-300 rounded px-4 py-2 ml-2">Close</button>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                Cancel
+              </button>
+              <button onClick={handleUpdateLog} className="px-4 py-2 text-sm font-medium text-white bg-violet-600 border border-transparent rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                Update
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal for Adding New Log */}
+      {/* Update the Add Modal with the same two-column layout */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h2 className="text-lg font-semibold">Add New Communication Log</h2>
-            <div className="space-y-4 mt-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Type</h3>
-                <input 
-                  type="text" 
-                  value={newLog.type} 
-                  onChange={(e) => setNewLog({ ...newLog, type: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  placeholder="Enter type"
-                />
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Add New Communication Log</h2>
+              <button 
+                onClick={closeAddModal} 
+                className="text-gray-400 hover:text-gray-500"
+                title="Close modal"
+                aria-label="Close add modal"
+              >
+                <span className="sr-only">Close</span>
+                <XIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <input 
+                    type="text" 
+                    value={newLog.type} 
+                    onChange={(e) => setNewLog({ ...newLog, type: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    placeholder="Enter type"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Message</label>
+                  <textarea 
+                    value={newLog.message} 
+                    onChange={(e) => setNewLog({ ...newLog, message: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    rows={3}
+                    placeholder="Enter message"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Meeting Name (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={newLog.meeting_name} 
+                    onChange={(e) => setNewLog({ ...newLog, meeting_name: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    placeholder="Enter meeting name"
+                  />
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Message</h3>
-                <textarea 
-                  value={newLog.message} 
-                  onChange={(e) => setNewLog({ ...newLog, message: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  placeholder="Enter message"
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Program</h3>
-                <select 
-                  value={newLog.program_id} 
-                  onChange={(e) => setNewLog({ ...newLog, program_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Program"
-                >
-                  <option value="">Select Program</option>
-                  {programs.map(program => (
-                    <option key={program.id} value={program.id}>{program.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Milestone</h3>
-                <select 
-                  value={newLog.milestone_id} 
-                  onChange={(e) => setNewLog({ ...newLog, milestone_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Milestone"
-                >
-                  <option value="">Select Milestone</option>
-                  {milestones.map(milestone => (
-                    <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Risk</h3>
-                <select 
-                  value={newLog.risk_id} 
-                  onChange={(e) => setNewLog({ ...newLog, risk_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select Risk"
-                >
-                  <option value="">Select Risk</option>
-                  {risks.map(risk => (
-                    <option key={risk.id} value={risk.id}>{risk.description}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">User</h3>
-                <select 
-                  value={newLog.user_id} 
-                  onChange={(e) => setNewLog({ ...newLog, user_id: e.target.value })} 
-                  className="mt-1 p-2 border border-gray-300 rounded w-full"
-                  title="Select User"
-                >
-                  <option value="">Select User</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Program</label>
+                  <select 
+                    value={newLog.program_id} 
+                    onChange={(e) => setNewLog({ ...newLog, program_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Program"
+                  >
+                    <option value="">Select Program</option>
+                    {programs.map(program => (
+                      <option key={program.id} value={program.id}>{program.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Milestone</label>
+                  <select 
+                    value={newLog.milestone_id} 
+                    onChange={(e) => setNewLog({ ...newLog, milestone_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Milestone"
+                  >
+                    <option value="">Select Milestone</option>
+                    {milestones.map(milestone => (
+                      <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Risk</label>
+                  <select 
+                    value={newLog.risk_id} 
+                    onChange={(e) => setNewLog({ ...newLog, risk_id: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Risk"
+                  >
+                    <option value="">Select Risk</option>
+                    {risks.map(risk => (
+                      <option key={risk.id} value={risk.id}>{risk.description}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select 
+                    value={newLog.status} 
+                    onChange={(e) => setNewLog({ 
+                      ...newLog, 
+                      status: e.target.value as CommunicationLog['status']
+                    })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Select Status"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Due Date and Time</label>
+                  <input 
+                    type="datetime-local" 
+                    value={newLog.due_date} 
+                    onChange={(e) => setNewLog({ ...newLog, due_date: e.target.value })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 sm:text-sm"
+                    title="Due date and time"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end mt-4">
-              <button onClick={handleAddLog} className="bg-blue-500 text-white rounded px-4 py-2">Add</button>
-              <button onClick={closeAddModal} className="bg-gray-300 rounded px-4 py-2 ml-2">Close</button>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button onClick={closeAddModal} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                Cancel
+              </button>
+              <button onClick={handleAddLog} className="px-4 py-2 text-sm font-medium text-white bg-violet-600 border border-transparent rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmOpen && logToDelete && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Delete Communication Log</h2>
+              <p className="mt-2 text-sm text-gray-500">
+                Are you sure you want to delete this log? This action cannot be undone.
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  setLogToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteLog}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { InvoiceModal } from '@/components/InvoiceModal';
+import { InvoiceModal as ImportedInvoiceModal, InvoiceModalProps as ImportedInvoiceModalProps } from '@/components/InvoiceModal';
 
 // Define types based on your schema
 interface Kpi {
@@ -99,28 +99,20 @@ interface Organization {
 
 interface Invoice {
   id: string;
-  invoice_date: string;
   name: string;
-  cost: number;
   type: 'Vendor' | 'Miscellaneous';
-  platform?: string;
-  vendor_cost_id?: string | null;
-  miscellaneous_cost_id?: string | null;
-  organization_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface InvoiceForSelect {
-  id: string;
-  name: string;
   cost: number;
+  invoice_date: string;
+  platform?: string;
+  organization_id: string;
 }
 
-interface FormData {
-  id?: string;
-  program_id?: string;
-  organization_id?: string;
+interface Cost {
+  id: string;
+  organization_id: string;
+  cost?: number;  // Only allow number type
+  invoice_id?: string | null;
+  // Resource cost specific fields
   user_id?: string;
   manager_id?: string;
   start_date?: string;
@@ -129,41 +121,26 @@ interface FormData {
   current_level?: string;
   status?: 'Active' | 'Resigned' | 'Separated';
   billing?: 'Billable' | 'Not Billable';
+  // Vendor cost specific fields
   vendor_name?: string;
   cycle?: 'one-time' | 'Continuous';
   approver_id?: string;
+  // Misc cost specific fields
   name?: string;
-  cost?: number | string;
-  created_at?: string;
-  updated_at?: string;
-  invoice_id?: string | null;
   billed_by_id?: string;
   approved_by_id?: string;
-  user?: { name: string };
-  manager?: { name: string };
-  organization?: { name: string };
-  approver?: { name: string };
-  billed_by?: { name: string };
-  approved_by?: { name: string };
+  // Additional fields
+  user?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  manager?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  organization?: { id: string; name: string };
+  approver?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  billed_by?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  approved_by?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
   invoice?: { id: string; name: string } | null;
-  user_name?: string;
-  manager_name?: string;
-  organization_name?: string;
-  billed_by_name?: string;
-  approved_by_name?: string;
-  approver_name?: string;
-  created_date?: string;
-}
-
-interface LevelCost {
-  id: string;
-  organization_id: string;
-  level: string;
-  cost_per_month: number;
-  effective_from: string;
-  effective_to: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
+  // Program field
+  program_id?: string;
 }
 
 interface Revenue {
@@ -175,8 +152,6 @@ interface Revenue {
   to_date: string;
   revenue_amount: number;
   other_details?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Profit {
@@ -224,6 +199,64 @@ interface NavItem {
   id: string;
   label: string;
   icon: React.ReactNode;
+}
+
+interface FormData {
+  id: string;
+  organization_id: string;
+  // Make cost property a number type only, and handle string conversion in the UI layer
+  cost?: number;
+  invoice_id?: string | null;
+  // Resource cost specific fields
+  user_id?: string;
+  manager_id?: string;
+  start_date?: string;
+  end_date?: string;
+  starting_level?: string;
+  current_level?: string;
+  status?: 'Active' | 'Resigned' | 'Separated';
+  billing?: 'Billable' | 'Not Billable';
+  // Vendor cost specific fields
+  vendor_name?: string;
+  cycle?: 'one-time' | 'Continuous';
+  approver_id?: string;
+  // Misc cost specific fields
+  name?: string;
+  billed_by_id?: string;
+  approved_by_id?: string;
+  // Additional fields
+  user?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  manager?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  organization?: { id: string; name: string };
+  approver?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  billed_by?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  approved_by?: { id: string; name: string | null; email: string }; // Add id and email, allow null name
+  invoice?: { id: string; name: string } | null;
+  created_at?: string;
+  updated_at?: string;
+  // Program field
+  program_id?: string;
+  email?: string;
+  managerEmail?: string;
+  approverEmail?: string;
+}
+
+interface InvoiceForSelect {
+  id: string;
+  name: string;
+  type: string;
+  cost: number; // Renamed from amount based on usage/previous error
+}
+
+interface LevelCost {
+  id: string;
+  organization_id: string;
+  level: string;
+  cost_per_month: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 function MetricCard({ metric }: { metric: Kpi }) {
@@ -300,10 +333,10 @@ function BudgetOverview() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold">Budget Overview</h2>
         <div className="flex space-x-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Download">
+          <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Download budget overview" title="Download budget overview">
             <Download className="h-5 w-5 text-gray-500" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Share">
+          <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Share budget overview" title="Share budget overview">
             <Share2 className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -497,367 +530,905 @@ function MonthlyTrends() {
   );
 }
 
-function CostManagementModal({
-  isOpen,
-  onClose,
-  type,
-  organizationId
-}: {
+interface InvoiceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  organizationId: string | null;
+  editingInvoice?: Invoice | null;
+}
+
+interface CostManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: 'resource' | 'vendor' | 'misc';
   organizationId: string | null;
-}) {
-  const [formData, setFormData] = useState<Partial<FormData>>({});
-  const [users, setUsers] = useState<User[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [availableInvoices, setAvailableInvoices] = useState<InvoiceForSelect[]>([]);
-  const [levelCosts, setLevelCosts] = useState<LevelCost[]>([]);
+  editingCost?: Cost | null;
+}
 
+interface RevenueModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  organizationId: string | null;
+  editingRevenue?: Revenue | null;
+}
+
+const InvoiceModal: React.FC<InvoiceModalProps> = ({
+  isOpen,
+  onClose,
+  organizationId,
+  editingInvoice = null
+}) => {
+  if (!isOpen) return null;
+  // ... existing implementation ...
+  return <div>Existing implementation</div>;
+};
+
+const CostManagementModal: React.FC<CostManagementModalProps> = ({
+  isOpen,
+  onClose,
+  type,
+  organizationId,
+  editingCost = null
+}) => {
+  // Log the editingCost prop on every render
+  console.log('[CostModal Render] editingCost prop:', editingCost);
+
+  // STATE DECLARATIONS (Ensure these are present)
+  const [formData, setFormData] = useState<FormData>({
+    id: '',
+    organization_id: organizationId || '',
+    cost: undefined,
+    invoice_id: null,
+    user_id: '',
+    manager_id: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    starting_level: '',
+    current_level: '',
+    status: undefined,
+    billing: undefined,
+    vendor_name: '',
+    cycle: undefined,
+    approver_id: '',
+    name: '',
+    billed_by_id: '',
+    approved_by_id: '',
+    program_id: ''
+  });
+  const [users, setUsers] = useState<Array<{ id: string; name: string | null; user_type: string; email: string }>>([]);
+  const [programs, setPrograms] = useState<Array<{ id: string; name: string }>>([]);
+  const [invoices, setInvoices] = useState<Array<{ id: string; name: string; type: string; cost: number }>>([]);
+  const [levelCostLevels, setLevelCostLevels] = useState<string[]>([]);
+  const [allLevelCosts, setAllLevelCosts] = useState<LevelCost[]>([]);
+  const [calculatedResourceCost, setCalculatedResourceCost] = useState<number | null>(null);
+
+  // Filter arrays (Ensure these are present)
+  const validUsers = users.filter(user => user && user.id);
+  const validInvoices = invoices.filter(invoice => invoice && invoice.id);
+  const validPrograms = programs.filter(program => program && program.id);
+
+  // Log filtered lists early
+  // console.log('[CostModal] Valid Users (All):', validUsers);
+  // console.log('[CostModal] Valid Internal Users (Resource Dropdown):', validUsers.filter(user => user.user_type === 'internal'));
+
+  // CORRECTED Data Fetching useEffect
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch internal users
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .eq('user_type', 'internal');
-      if (userData) setUsers(userData as User[]);
-
-      // Fetch organizations
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id, name');
-      if (orgData) setOrganizations(orgData as Organization[]);
-
-      // Fetch level costs if this is a resource cost
-      if (type === 'resource' && organizationId) {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: levelData } = await supabase
-          .from('level_costs')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .lte('effective_from', today)
-          .or(`effective_to.is.null,effective_to.gte.${today}`)
-          .order('level', { ascending: true });
-        
-        if (levelData) {
-          // Remove duplicates and keep only the most recent effective level
-          const uniqueLevels = levelData.reduce((acc: LevelCost[], curr) => {
-            const existingIndex = acc.findIndex(item => item.level === curr.level);
-            if (existingIndex === -1) {
-              acc.push(curr);
-            } else if (new Date(curr.effective_from) > new Date(acc[existingIndex].effective_from)) {
-              acc[existingIndex] = curr;
-            }
-            return acc;
-          }, []);
-          setLevelCosts(uniqueLevels);
-        }
-      }
-    };
-
-    // Add back fetchRelevantInvoices if removed
-    const fetchRelevantInvoices = async () => {
-       if (!organizationId || (type !== 'vendor' && type !== 'misc')) {
-           setAvailableInvoices([]);
-           return;
-       }
-       const invoiceType = type === 'vendor' ? 'Vendor' : 'Miscellaneous';
-       const { data, error } = await supabase
-         .from('invoices')
-         .select('id, name, cost')
-         .eq('type', invoiceType)
-         .eq('organization_id', organizationId)
-         .is(type === 'vendor' ? 'vendor_cost_id' : 'miscellaneous_cost_id', null)
-         .order('name', { ascending: true });
-       if (error) console.error('Error fetching relevant invoices:', error);
-       else if (data) setAvailableInvoices(data as InvoiceForSelect[]);
-     };
-
-    if (isOpen) {
-      fetchData();
-      fetchRelevantInvoices(); // Call fetchRelevantInvoices
-      setFormData({});
-    } else {
-       setAvailableInvoices([]);
-    }
-  }, [isOpen, type, organizationId]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-     const { name, value, type: inputType } = e.target;
-     const isCheckbox = inputType === 'checkbox' && e.target instanceof HTMLInputElement;
-     setFormData((prev) => ({
-        ...prev,
-        [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
-    }));
-  };
-
-   const handleSelectChange = (name: string, value: string | number | boolean | null) => {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-   };
-
-   const handleLevelChange = async (level: string) => {
-    if (!level || !organizationId) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const applicableCost = levelCosts.find(lc => 
-      lc.level === level && 
-      new Date(lc.effective_from) <= new Date(today) && 
-      (!lc.effective_to || new Date(lc.effective_to) >= new Date(today))
-    );
-
-    setFormData(prev => ({
-      ...prev,
-      current_level: level,
-      cost: applicableCost?.cost_per_month?.toString() || ''
-    }));
-  };
-
-   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
       if (!organizationId) {
-          alert("Organization context is missing. Cannot save cost.");
-          return;
+         // Clear all dropdown data if no organization is selected
+         setUsers([]);
+         setPrograms([]);
+         setInvoices([]);
+         setAllLevelCosts([]);
+         setLevelCostLevels([]);
+         return;
       }
-      if (type === 'resource' && !formData.user_id) { 
-        alert("User is required for Resource Cost."); 
-        return; 
-      }
-      if (type === 'vendor' && !formData.vendor_name) { alert("Vendor Name is required."); return; }
-      if (type === 'misc' && !formData.name) { alert("Name/Description is required."); return; }
-      const costValue = formData.cost ? parseFloat(formData.cost as string) : undefined;
-       if (formData.cost && isNaN(costValue as number)) {
-           alert("Invalid Cost value.");
-           return;
-       }
-      const dataToInsert: Partial<FormData> & { organization_id: string } = {
-          ...formData,
-          organization_id: organizationId,
-          cost: type !== 'resource' ? costValue : undefined, // Only include cost for non-resource types
-          invoice_id: formData.invoice_id || null,
-      };
-      // Clean up fields based on type
-      if (type === 'resource') { 
-          delete dataToInsert.vendor_name; 
-          delete dataToInsert.cycle; 
-          delete dataToInsert.approver_id; 
-          delete dataToInsert.name; 
-          delete dataToInsert.billed_by_id; 
-          delete dataToInsert.approved_by_id; 
-          delete dataToInsert.invoice_id;
-          delete dataToInsert.cost; // Remove cost field for resource costs as it's derived from level_costs
-      }
-      else if (type === 'vendor') { delete dataToInsert.user_id; delete dataToInsert.manager_id; delete dataToInsert.starting_level; delete dataToInsert.current_level; delete dataToInsert.status; delete dataToInsert.billing; delete dataToInsert.name; delete dataToInsert.billed_by_id; delete dataToInsert.approved_by_id; }
-      else { delete dataToInsert.user_id; delete dataToInsert.manager_id; delete dataToInsert.start_date; delete dataToInsert.end_date; delete dataToInsert.starting_level; delete dataToInsert.current_level; delete dataToInsert.status; delete dataToInsert.billing; delete dataToInsert.vendor_name; delete dataToInsert.cycle; delete dataToInsert.approver_id; }
 
-      const table = type === 'resource' ? 'resource_costs' : type === 'vendor' ? 'vendor_costs' : 'miscellaneous_costs';
-      const { data: insertedCost, error } = await supabase.from(table).insert([dataToInsert]).select('id').single();
+      try {
+          // Fetch Users (Always needed) - Include user_type and email
+          const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, name, user_type, email') // Add email
+            .eq('organization_id', organizationId);
+          if (usersError) throw usersError;
+          // Cast to the updated type
+          setUsers((usersData as Array<{ id: string; name: string | null; user_type: string; email: string }>) || []);
+          console.log('Fetched Users Data:', usersData); // Log raw fetched data
 
-      if (error) {
-        alert(`Error saving cost: ${error.message}`);
-      } else if (insertedCost && formData.invoice_id && (type === 'vendor' || type === 'misc')) {
-        // Link invoice if selected
-        const costIdField = type === 'vendor' ? 'vendor_cost_id' : 'miscellaneous_cost_id';
-        const { error: invoiceUpdateError } = await supabase.from('invoices').update({ [costIdField]: insertedCost.id }).eq('id', formData.invoice_id);
-        if (invoiceUpdateError) alert(`Cost saved, but failed to link invoice: ${invoiceUpdateError.message}. Please link manually if needed.`);
-        onClose();
-      } else {
-         onClose(); // Close modal on success
+          // Fetch Programs (Always needed)
+          const { data: programsData, error: programsError } = await supabase
+            .from('programs')
+            .select('id, name')
+            .eq('organization_id', organizationId);
+          if (programsError) throw programsError;
+          setPrograms(programsData || []);
+
+          // Fetch Invoices (Conditional)
+          if (type === 'vendor' || type === 'misc') {
+            const { data: invoicesData, error: invoicesError } = await supabase
+              .from('invoices')
+              .select('id, name, type, cost')
+              .eq('organization_id', organizationId)
+              .eq('type', type === 'vendor' ? 'Vendor' : 'Miscellaneous');
+            if (invoicesError) throw invoicesError;
+            setInvoices((invoicesData as Array<{ id: string; name: string; type: string; cost: number }>) || []);
+          } else {
+            setInvoices([]);
+          }
+
+          // Fetch Level Costs (Conditional)
+          if (type === 'resource') {
+            const { data: levelCostsData, error: levelCostsError } = await supabase
+              .from('level_costs')
+              .select('*')
+              .eq('organization_id', organizationId);
+            if (levelCostsError) throw levelCostsError;
+            const costs = (levelCostsData as LevelCost[]) || [];
+            setAllLevelCosts(costs);
+            const distinctLevels = [...new Set(costs.map(lc => lc.level))].filter(Boolean);
+            setLevelCostLevels(distinctLevels);
+          } else {
+            setAllLevelCosts([]);
+            setLevelCostLevels([]);
+          }
+      } catch (error: any) {
+          console.error("Error fetching data for modal:", error.message);
+          // Clear state on error
+          setUsers([]);
+          setPrograms([]);
+          setInvoices([]);
+          setAllLevelCosts([]);
+          setLevelCostLevels([]);
       }
     };
 
-  // Restore the Modal JSX structure if it was reverted
-  // Ensure all optional <Select> components use value={formData.field || undefined}
+    fetchData();
+    // console.log('Current Users State:', users); // Remove log
+  }, [organizationId, type]);
+
+  // useEffect for setting form data on edit (Ensure this is present)
+  useEffect(() => {
+    // console.log('[CostModal useEffect] Received editingCost:', editingCost); // Keep if needed
+    if (editingCost) {
+        const startDate = editingCost.start_date ? editingCost.start_date.split('T')[0] : new Date().toISOString().split('T')[0];
+        const endDate = editingCost.end_date ? editingCost.end_date.split('T')[0] : '';
+
+        // Directly set state without intermediate variable
+      setFormData({
+        id: editingCost.id || '',
+        organization_id: editingCost.organization_id || organizationId || '',
+            cost: type === 'resource' ? undefined : editingCost.cost,
+            invoice_id: editingCost.invoice_id || '',
+            user_id: editingCost.user_id || '',
+            manager_id: editingCost.manager_id || '',
+            start_date: startDate,
+            end_date: endDate,
+            starting_level: editingCost.starting_level || '',
+            current_level: editingCost.current_level || '',
+            status: editingCost.status || undefined,
+            billing: editingCost.billing || undefined,
+            vendor_name: editingCost.vendor_name || '',
+            cycle: editingCost.cycle || undefined,
+            approver_id: editingCost.approver_id || '',
+            name: editingCost.name || '',
+            billed_by_id: editingCost.billed_by_id || '',
+            approved_by_id: editingCost.approved_by_id || '',
+            program_id: editingCost.program_id || ''
+        });
+        // console.log('[CostModal useEffect] Called setFormData with:', { /* object details */ }); // Simplified log if needed
+
+    } else {
+        // Reset form for adding new
+      setFormData({
+        id: '',
+        organization_id: organizationId || '',
+        cost: undefined,
+            invoice_id: '', // Use empty string for 'none' select value
+        user_id: '',
+        manager_id: '',
+            start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        starting_level: '',
+        current_level: '',
+        status: undefined,
+        billing: undefined,
+        vendor_name: '',
+        cycle: undefined,
+        approver_id: '',
+        name: '',
+        billed_by_id: '',
+            approved_by_id: '',
+            program_id: ''
+          });
+    }
+  }, [editingCost, organizationId, isOpen, type]); // Add type dependency
+
+  // useEffect for calculating cost (Ensure this is present)
+  useEffect(() => {
+    if (type === 'resource' && formData.current_level && formData.start_date && allLevelCosts.length > 0) {
+        const targetDate = new Date(formData.start_date + 'T00:00:00Z');
+        const applicableCost = allLevelCosts.find(lc =>
+            lc.level === formData.current_level &&
+            new Date(lc.effective_from) <= targetDate &&
+            (lc.effective_to === null || new Date(lc.effective_to) >= targetDate)
+        );
+        setCalculatedResourceCost(applicableCost ? applicableCost.cost_per_month : null);
+    } else {
+        setCalculatedResourceCost(null);
+    }
+  }, [type, formData.current_level, formData.start_date, allLevelCosts]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // ... (existing logic)
+    const { name, value } = e.target;
+    if (name === 'cost') {
+      const costValue = value === '' ? undefined : parseFloat(value);
+      setFormData(prev => ({ ...prev, [name]: costValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prevState => {
+      // Log previous state focusing on ID and the field changing
+      console.log(`[handleSelectChange] Field: ${name}, Value: ${value}, Prev State ID: ${prevState.id}, Prev State UserID: ${prevState.user_id}`);
+
+      // 1. Create base new state with the direct change using spread
+      let newState: FormData = { ...prevState };
+      (newState as any)[name] = value;
+
+      // 2. Calculate derived changes based on the *current* change
+      let derivedChanges: Partial<FormData> = {};
+      if (type === 'resource') {
+          if (name === 'user_id') {
+              const selectedUser = users.find(user => user.id === value);
+              derivedChanges.email = selectedUser?.email || '';
+          } else if (name === 'manager_id') {
+              const selectedManager = users.find(user => user.id === value);
+              derivedChanges.managerEmail = selectedManager?.email || '';
+          } else if (name === 'approver_id') {
+              const selectedApprover = users.find(user => user.id === value);
+              derivedChanges.approverEmail = selectedApprover?.email || '';
+          }
+      } else if ((type === 'vendor' || type === 'misc') && name === 'invoice_id') {
+          // Recalculate cost based on the potentially updated invoice_id in newState
+          if (newState.invoice_id && newState.invoice_id !== 'none') {
+              const selectedInvoice = invoices.find(inv => inv.id === newState.invoice_id);
+              // Use selected invoice cost, fallback to 0 if not found or for 'none'
+              derivedChanges.cost = selectedInvoice ? selectedInvoice.cost : 0;
+          } else {
+              // Reset cost if invoice is deselected or type requires it
+              derivedChanges.cost = 0; // Default to 0 for vendor/misc if no invoice
+          }
+      }
+
+      // 3. Apply derived changes
+      newState = { ...newState, ...derivedChanges };
+
+      console.log(`[handleSelectChange] Final New State (ID: ${newState.id}, UserID: ${newState.user_id}):`, newState);
+      return newState;
+    });
+  };
+
+  // CORRECTED handleSubmit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId) {
+      alert('Organization ID is required');
+      return;
+    }
+
+    // Log formData right before validation
+    // console.log('[handleSubmit] formData at submission:', formData); // Remove log
+
+    // Validation logic (keep as is)
+    if (type === 'resource') {
+      // ... (validation for resource)
+      if (!formData.user_id) { 
+          console.error('[handleSubmit] Validation Error: formData.user_id is missing!', formData); // Log details on error
+          alert('User is required for resource costs'); 
+          return; 
+      }
+      if (!formData.start_date) { alert('Start date is required'); return; }
+    } else if (type === 'vendor') {
+      // ... (validation for vendor)
+      if (!formData.vendor_name) { alert('Vendor name is required'); return; }
+      if (!formData.start_date) { alert('Start date is required'); return; }
+    } else if (type === 'misc') {
+      // ... (validation for misc)
+      if (!formData.name) { alert('Cost name is required'); return; }
+    }
+
+    const table = type === 'resource' ? 'resource_costs' 
+                : type === 'vendor' ? 'vendor_costs' 
+                : 'miscellaneous_costs';
+
+    // CORRECTED Payload Construction
+    let payload: any = {
+      organization_id: organizationId,
+      program_id: formData.program_id || null,
+      // cost, invoice_id, start/end dates added conditionally below
+    };
+
+    if (type === 'resource') {
+      payload = {
+        ...payload,
+        user_id: formData.user_id,
+        manager_id: formData.manager_id || null,
+        start_date: formData.start_date,
+        end_date: formData.end_date || null,
+        starting_level: formData.starting_level || null,
+        current_level: formData.current_level || null,
+        status: formData.status || null,
+        billing: formData.billing || null,
+        // No cost, no invoice_id for resource
+      };
+    } else if (type === 'vendor') {
+      payload = {
+        ...payload,
+        cost: formData.cost, // Has cost
+        invoice_id: formData.invoice_id || null, // Has invoice_id
+        start_date: formData.start_date,
+        end_date: formData.end_date || null,
+        vendor_name: formData.vendor_name,
+        cycle: formData.cycle || null,
+        approver_id: formData.approver_id || null,
+      };
+    } else if (type === 'misc') {
+      payload = {
+        ...payload,
+        cost: formData.cost, // Has cost
+        invoice_id: formData.invoice_id || null, // Has invoice_id
+        name: formData.name,
+        billed_by_id: formData.billed_by_id || null,
+        approved_by_id: formData.approved_by_id || null,
+        // No start_date, end_date for misc
+      };
+    }
+
+    // Timestamps (keep as is)
+    if (editingCost) {
+      payload.updated_at = new Date().toISOString();
+    } else {
+      payload.created_at = new Date().toISOString();
+      payload.updated_at = new Date().toISOString();
+    }
+
+    // Supabase call (keep as is)
+    let error;
+    // console.log(`[handleSubmit] Payload for ${type}:`, payload); // Remove log
+    if (editingCost) {
+      const { error: updateError } = await supabase.from(table).update(payload).eq('id', editingCost.id);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase.from(table).insert([payload]);
+      error = insertError;
+    }
+
+    if (error) {
+      alert(`Error ${editingCost ? 'updating' : 'creating'} cost: ${error.message}`);
+    } else {
+      onClose();
+    }
+  };
+
+  // JSX Rendering (Ensure level dropdowns and calculated cost display are present for resource)
+  // ... (rest of the component, including the return statement with the form) ...
+  if (!isOpen) return null;
+
   return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 ${isOpen ? 'flex' : 'hidden'} items-center justify-center z-50`}>
-      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
-        <div className="flex justify-between items-center mb-6 sticky top-0 bg-white py-4 border-b z-10">
-          <h2 className="text-xl font-semibold">Add {type.charAt(0).toUpperCase() + type.slice(1)} Cost</h2>
-           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal">
-             <X className="h-5 w-5 text-gray-500" />
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+         {/* ... Modal Header ... */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">{editingCost ? 'Edit' : 'Add New'} {type.charAt(0).toUpperCase() + type.slice(1)} Cost</h2>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal"><X className="h-5 w-5 text-gray-500" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 px-1 pb-4">
-          {/* Resource Cost Fields */}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Resource Fields */} 
           {type === 'resource' && (
             <>
+               {/* User Dropdown */} 
               <div>
-                 <Label htmlFor="user_id">User</Label>
-                 <Select name="user_id" required value={formData.user_id || ''} onValueChange={(value: string) => handleSelectChange('user_id', value)}>
-                    <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select User" /> </SelectTrigger>
-                    <SelectContent> {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)} </SelectContent>
+                <Label htmlFor="user_id">Resource *</Label>
+                <select
+                  id="user_id"
+                  title="Resource User"
+                  disabled={users.length === 0}
+                  name="user_id"
+                  value={formData.user_id || ''}
+                  onChange={(e) => handleSelectChange(e.target.name, e.target.value)}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select User</option>
+                  {validUsers.map((user) => (
+                    <option key={user.id} value={user.id}>{user.name || user.email || user.id}</option>
+                  ))}
+                </select>
+              </div>
+               {/* Manager Dropdown */} 
+              <div>
+                <Label htmlFor="manager_id">Manager</Label>
+                <select
+                  id="manager_id"
+                  title="Manager"
+                  disabled={users.length === 0}
+                  name="manager_id"
+                  value={formData.manager_id || ''}
+                  onChange={(e) => handleSelectChange(e.target.name, e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select Manager</option>
+                  {validUsers.map((user) => (
+                    <option key={user.id} value={user.id}>{user.name || user.email || user.id}</option>
+                  ))}
+                </select>
+              </div>
+               {/* Starting Level Dropdown */} 
+              <div>
+                <Label htmlFor="starting_level">Starting Level</Label>
+                <Select name="starting_level" value={formData.starting_level || 'none'} onValueChange={(value) => handleSelectChange('starting_level', value === 'none' ? '' : value)}>
+                   <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Starting Level" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="none">None</SelectItem>
+                     {levelCostLevels.map((level: string) => (<SelectItem key={level} value={level}>{level}</SelectItem>))}
+                   </SelectContent>
                  </Select>
-              </div>
-               <div>
-                 <Label htmlFor="manager_id">Manager</Label>
-                 <Select name="manager_id" value={formData.manager_id || undefined} onValueChange={(value: string) => handleSelectChange('manager_id', value || null)}> { /* Allow unsetting */ }
-                     <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Manager (Optional)" /> </SelectTrigger>
-                     <SelectContent> <SelectItem value="none">None</SelectItem> {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)} </SelectContent>
-                 </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div> <Label htmlFor="start_date">Start Date</Label> <Input id="start_date" type="date" name="start_date" required value={formData.start_date || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                <div> <Label htmlFor="end_date">End Date (Optional)</Label> <Input id="end_date" type="date" name="end_date" value={formData.end_date || ''} onChange={handleInputChange} className="mt-1"/> </div>
-              </div>
-               <div className="grid grid-cols-2 gap-4">
-                 <div> <Label htmlFor="starting_level">Starting Level</Label> <Input id="starting_level" type="text" name="starting_level" value={formData.starting_level || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                 <div>
-                   <Label htmlFor="current_level">Level</Label>
-                   <Select 
-                     name="current_level" 
-                     value={formData.current_level || ''} 
-                     onValueChange={handleLevelChange}
-                   >
-                     <SelectTrigger className="w-full mt-1">
-                       <SelectValue placeholder="Select Level" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       {Array.from(new Set(levelCosts.map(lc => lc.level)))
-                         .sort()
-                         .map(level => (
-                           <SelectItem key={level} value={level}>
-                             {level} - ${levelCosts.find(lc => lc.level === level)?.cost_per_month.toLocaleString(undefined, {minimumFractionDigits: 2})} /month
-                           </SelectItem>
-                         ))}
-                     </SelectContent>
-                   </Select>
-                 </div>
                </div>
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select name="status" value={formData.status || ''} onValueChange={(value: 'Active' | 'Resigned' | 'Separated') => handleSelectChange('status', value)}>
-                         <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Status" /> </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Resigned">Resigned</SelectItem>
-                            <SelectItem value="Separated">Separated</SelectItem>
-                         </SelectContent>
-                    </Select>
-                  </div>
-                   <div>
-                    <Label htmlFor="billing">Billing</Label>
-                    <Select name="billing" value={formData.billing || ''} onValueChange={(value: 'Billable' | 'Not Billable') => handleSelectChange('billing', value)}>
-                         <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Billing Type" /> </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="Billable">Billable</SelectItem>
-                            <SelectItem value="Not Billable">Not Billable</SelectItem>
-                         </SelectContent>
-                    </Select>
-                  </div>
+               {/* Current Level Dropdown */} 
+               <div>
+                 <Label htmlFor="current_level">Current Level</Label>
+                 <Select name="current_level" value={formData.current_level || 'none'} onValueChange={(value) => handleSelectChange('current_level', value === 'none' ? '' : value)}>
+                   <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Current Level" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="none">None</SelectItem>
+                     {levelCostLevels.map((level: string) => (<SelectItem key={level} value={level}>{level}</SelectItem>))}
+                   </SelectContent>
+                 </Select>
+               </div>
+               {/* Calculated Cost Display */} 
+              <div>
+                <Label htmlFor="calculated_cost">Calculated Cost per Month</Label>
+                <Input id="calculated_cost" type="text" value={calculatedResourceCost !== null ? `$${calculatedResourceCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A - Select Level & Start Date'} readOnly disabled className="bg-gray-100 cursor-not-allowed mt-1" />
+                {calculatedResourceCost === null && formData.current_level && formData.start_date && (
+                   <p className="text-xs text-red-500 mt-1">No cost found for the selected level and effective date.</p>
+                )}
+              </div>
+               {/* Status Dropdown */} 
+               <div>
+                 <Label htmlFor="status">Status</Label>
+                 <select
+                   id="status"
+                   title="Status"
+                   name="status"
+                   value={formData.status || ''}
+                   onChange={(e) => handleSelectChange(e.target.name, e.target.value)}
+                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                 >
+                   <option value="">Select Status</option>
+                   <option value="Active">Active</option>
+                   <option value="Resigned">Resigned</option>
+                   <option value="Separated">Separated</option>
+                 </select>
+               </div>
+               {/* Billing Dropdown */} 
+               <div>
+                 <Label htmlFor="billing">Billing</Label>
+                 <select
+                   id="billing"
+                   title="Billing Status"
+                   name="billing"
+                   value={formData.billing || ''}
+                   onChange={(e) => handleSelectChange(e.target.name, e.target.value)}
+                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                 >
+                   <option value="">Select Status</option>
+                   <option value="Billable">Billable</option>
+                   <option value="Non-Billable">Non-Billable</option>
+                   <option value="Strategic">Strategic</option>
+                 </select>
                </div>
             </>
           )}
 
-           {/* Vendor Cost Fields */}
-           {type === 'vendor' && (
-             <>
-               <div> <Label htmlFor="vendor_name">Vendor Name</Label> <Input id="vendor_name" type="text" name="vendor_name" required value={formData.vendor_name || ''} onChange={handleInputChange} className="mt-1"/> </div>
-               <div>
-                 <Label htmlFor="organization_id">Organization (Vendor)</Label>
-                 <Select name="organization_id" value={formData.organization_id || undefined} onValueChange={(value: string) => handleSelectChange('organization_id', value || null)}> { /* Allow unsetting */ }
-                    <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Vendor Organization (Optional)" /> </SelectTrigger>
-                    <SelectContent> <SelectItem value="none">None</SelectItem> {organizations.map(org => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)} </SelectContent>
+           {/* Vendor Fields */} 
+          {type === 'vendor' && (
+            <>
+               {/* Vendor Name Input */}
+               <div><Label htmlFor="vendor_name">Vendor Name</Label><Input id="vendor_name" name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} required /></div>
+               {/* Cycle Dropdown */}
+              <div>
+                 <Label htmlFor="cycle">Cycle</Label>
+                 <Select name="cycle" value={formData.cycle || 'none'} onValueChange={(value) => handleSelectChange('cycle', value === 'none' ? '' : value)}>
+                   <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Cycle" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="one-time">One-time</SelectItem>
+                     <SelectItem value="Continuous">Continuous</SelectItem>
+                   </SelectContent>
                  </Select>
-               </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="cycle">Cycle</Label>
-                     <Select name="cycle" value={formData.cycle || ''} onValueChange={(value: 'one-time' | 'Continuous') => handleSelectChange('cycle', value)}>
-                         <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Cycle" /> </SelectTrigger>
-                         <SelectContent>
-                            <SelectItem value="one-time">One-Time</SelectItem>
-                            <SelectItem value="Continuous">Continuous</SelectItem>
-                         </SelectContent>
-                     </Select>
-                  </div>
-                  <div> <Label htmlFor="cost">Cost</Label> <Input id="cost" type="number" step="0.01" name="cost" value={formData.cost || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div> <Label htmlFor="start_date">Start Date (Optional)</Label> <Input id="start_date" type="date" name="start_date" value={formData.start_date || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                   <div> <Label htmlFor="end_date">End Date (Optional)</Label> <Input id="end_date" type="date" name="end_date" value={formData.end_date || ''} onChange={handleInputChange} className="mt-1"/> </div>
-                </div>
-                <div>
-                 <Label htmlFor="approver_id">Approver</Label>
-                 <Select name="approver_id" value={formData.approver_id || undefined} onValueChange={(value: string) => handleSelectChange('approver_id', value || null)}> { /* Allow unsetting */ }
-                    <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select Approver (Optional)" /> </SelectTrigger>
-                    <SelectContent> <SelectItem value="none">None</SelectItem> {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)} </SelectContent>
-                 </Select>
-               </div>
-               {/* Link Invoice Dropdown */}
+              </div>
+               {/* Approver Dropdown */} 
+              <div>
+                <Label htmlFor="approver_id">Approver</Label>
+                <Select name="approver_id" value={formData.approver_id || 'none'} onValueChange={(value) => handleSelectChange('approver_id', value === 'none' ? '' : value)}>
+                  <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Approver" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {/* Display name or email or id */}
+                    {validUsers.map((user) => (<SelectItem key={user.id} value={user.id}>{user.name || user.email || user.id}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+               {/* Invoice Dropdown (Vendor) */} 
                <div>
-                 <Label htmlFor="invoice_id">Link Invoice (Optional)</Label>
-                 <Select name="invoice_id" onValueChange={(value: string) => handleSelectChange('invoice_id', value || null)} value={formData.invoice_id || undefined}> { /* Allow unsetting */ }
-                    <SelectTrigger className="w-full mt-1" title="Select an existing invoice to link"> <SelectValue placeholder="-- Select Invoice --" /> </SelectTrigger>
+                 <Label htmlFor="invoice_id">Invoice</Label>
+                 <Select name="invoice_id" value={formData.invoice_id || 'none'} onValueChange={(value) => handleSelectChange('invoice_id', value === 'none' ? '' : value)}>
+                    <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Invoice" /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="none">-- Do not link --</SelectItem>
-                        {availableInvoices.map((invoice) => (
-                           <SelectItem key={invoice.id} value={invoice.id}> {invoice.name} (${invoice.cost}) </SelectItem>
-                        ))}
-                     </SelectContent>
-                 </Select>
-               </div>
-             </>
-           )}
+                      <SelectItem value="none">None</SelectItem>
+                      {validInvoices.map((invoice) => (<SelectItem key={invoice.id} value={invoice.id}>{invoice.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+            </>
+          )}
 
-           {/* Miscellaneous Cost Fields */}
-           {type === 'misc' && (
-             <>
-               <div> <Label htmlFor="name">Name/Description</Label> <Input id="name" type="text" name="name" required value={formData.name || ''} onChange={handleInputChange} className="mt-1"/> </div>
-               <div> <Label htmlFor="cost">Cost</Label> <Input id="cost" type="number" step="0.01" name="cost" required value={formData.cost || ''} onChange={handleInputChange} className="mt-1"/> </div>
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <Label htmlFor="billed_by_id">Billed By</Label>
-                    <Select name="billed_by_id" value={formData.billed_by_id || undefined} onValueChange={(value: string) => handleSelectChange('billed_by_id', value || null)}> { /* Allow unsetting */ }
-                         <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select User (Optional)" /> </SelectTrigger>
-                         <SelectContent> <SelectItem value="none">None</SelectItem> {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)} </SelectContent>
-                     </Select>
-                 </div>
-                 <div>
-                   <Label htmlFor="approved_by_id">Approved By</Label>
-                     <Select name="approved_by_id" value={formData.approved_by_id || undefined} onValueChange={(value: string) => handleSelectChange('approved_by_id', value || null)}> { /* Allow unsetting */ }
-                         <SelectTrigger className="w-full mt-1"> <SelectValue placeholder="Select User (Optional)" /> </SelectTrigger>
-                         <SelectContent> <SelectItem value="none">None</SelectItem> {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)} </SelectContent>
-                     </Select>
-                 </div>
-               </div>
-                {/* Link Invoice Dropdown */}
+           {/* Misc Fields */} 
+          {type === 'misc' && (
+            <>
+               {/* Name Input */}
+               <div><Label htmlFor="name">Cost Name</Label><Input id="name" name="name" value={formData.name || ''} onChange={handleInputChange} required /></div>
+               {/* Billed By Dropdown */} 
+              <div>
+                <Label htmlFor="billed_by_id">Billed By</Label>
+                <Select name="billed_by_id" value={formData.billed_by_id || 'none'} onValueChange={(value) => handleSelectChange('billed_by_id', value === 'none' ? '' : value)}>
+                  <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Billed By" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {/* Display name or email or id */}
+                    {validUsers.map((user) => (<SelectItem key={user.id} value={user.id}>{user.name || user.email || user.id}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+               {/* Approved By Dropdown */} 
                <div>
-                 <Label htmlFor="invoice_id">Link Invoice (Optional)</Label>
-                 <Select name="invoice_id" onValueChange={(value: string) => handleSelectChange('invoice_id', value || null)} value={formData.invoice_id || undefined}> { /* Allow unsetting */ }
-                    <SelectTrigger className="w-full mt-1" title="Select an existing invoice to link"> <SelectValue placeholder="-- Select Invoice --" /> </SelectTrigger>
+                 <Label htmlFor="approved_by_id">Approved By</Label>
+                 <Select name="approved_by_id" value={formData.approved_by_id || 'none'} onValueChange={(value) => handleSelectChange('approved_by_id', value === 'none' ? '' : value)}>
+                    <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Approved By" /></SelectTrigger>
                     <SelectContent>
-                         <SelectItem value="none">-- Do not link --</SelectItem>
-                        {availableInvoices.map((invoice) => (
-                           <SelectItem key={invoice.id} value={invoice.id}> {invoice.name} (${invoice.cost}) </SelectItem>
-                        ))}
-                     </SelectContent>
-                 </Select>
-               </div>
-             </>
-           )}
+                      <SelectItem value="none">None</SelectItem>
+                      {/* Display name or email or id */}
+                      {validUsers.map((user) => (<SelectItem key={user.id} value={user.id}>{user.name || user.email || user.id}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+               {/* Invoice Dropdown (Misc) */} 
+               <div>
+                 <Label htmlFor="invoice_id">Invoice</Label>
+                 <Select name="invoice_id" value={formData.invoice_id || 'none'} onValueChange={(value) => handleSelectChange('invoice_id', value === 'none' ? '' : value)}>
+                    <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Invoice" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {validInvoices.map((invoice) => (<SelectItem key={invoice.id} value={invoice.id}>{invoice.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+            </>
+          )}
 
-          {/* Submit/Cancel Buttons */}
-          <div className="flex justify-end space-x-3 pt-6 border-t mt-6 sticky bottom-0 bg-white py-4">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Save Cost</Button>
+           {/* Cost Amount (Vendor/Misc Only) */} 
+           {(type === 'vendor' || type === 'misc') && (
+          <div>
+            <Label htmlFor="cost">Cost Amount</Label>
+            <Input
+                  id="cost" name="cost" type="number" step="0.01" value={formData.cost || ''} onChange={handleInputChange} required
+                  readOnly={!!formData.invoice_id && formData.invoice_id !== 'none'}
+                  disabled={!!formData.invoice_id && formData.invoice_id !== 'none'}
+                  className={!!formData.invoice_id && formData.invoice_id !== 'none' ? 'bg-gray-100 cursor-not-allowed' : ''}
+                />
+                {!!formData.invoice_id && formData.invoice_id !== 'none' && (
+                  <p className="text-xs text-gray-500 mt-1">Cost is automatically populated from the selected invoice.</p>
+                )}
+          </div>
+           )}
+ 
+           {/* Program Dropdown (All Types) */} 
+           <div>
+             <Label htmlFor="program_id">Program</Label>
+             <Select name="program_id" value={formData.program_id || 'none'} onValueChange={(value) => handleSelectChange('program_id', value === 'none' ? '' : value)}>
+               <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Program" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="none">None</SelectItem>
+                 {validPrograms.map((program) => (<SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>))}
+               </SelectContent>
+             </Select>
+           </div>
+ 
+           {/* Start Date (Resource/Vendor Only) */} 
+           {(type === 'resource' || type === 'vendor') && (
+             <div><Label htmlFor="start_date">Start Date</Label><Input id="start_date" name="start_date" type="date" value={formData.start_date || ''} onChange={handleInputChange} required /></div>
+           )}
+ 
+           {/* End Date (Resource/Vendor Only) */} 
+           {(type === 'resource' || type === 'vendor') && (
+             <div><Label htmlFor="end_date">End Date</Label><Input id="end_date" name="end_date" type="date" value={formData.end_date || ''} onChange={handleInputChange} /></div>
+           )}
+ 
+           {/* Billing Status - Using standard HTML select for testing */}
+           <div className="mt-4">
+             <Label htmlFor="billing">Billing Status</Label>
+             <select
+               id="billing" // Keep ID for label
+               title="Billing Status" // Add title for accessibility
+               name="billing"
+               value={formData.billing || ''} // Handle potential undefined
+               onChange={(e) => handleSelectChange(e.target.name, e.target.value)}
+               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" // Basic styling
+             >
+               <option value="">Select Status</option>
+               <option value="Billable">Billable</option>
+               <option value="Non-Billable">Non-Billable</option>
+               <option value="Strategic">Strategic</option>
+             </select>
+           </div>
+ 
+           {/* Billing Cycle - Keep as Tremor Select for now */}
+           {(type === 'vendor' || type === 'misc') && (
+             <div className="mt-4">
+               <Label htmlFor="cycle">Billing Cycle</Label>
+               <Select name="cycle" value={formData.cycle || 'none'} onValueChange={(value) => handleSelectChange('cycle', value === 'none' ? '' : value)}>
+                 <SelectTrigger className="w-full mt-1"><SelectValue placeholder="Select Cycle" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="one-time">One-time</SelectItem>
+                   <SelectItem value="Continuous">Continuous</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+           )}
+ 
+           {/* Form Actions */}
+          <div className="flex justify-end space-x-3 pt-6">
+             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+             <Button type="submit">{editingCost ? 'Update' : 'Add'} Cost</Button>
           </div>
         </form>
       </div>
     </div>
   );
-}
+};
+
+const RevenueModal: React.FC<RevenueModalProps> = ({
+  isOpen,
+  onClose,
+  organizationId,
+  editingRevenue = null
+}) => {
+  const [formData, setFormData] = useState({
+    billing_type: 'Direct' as 'Direct' | 'Indirect',
+    billing_sub_type: 'resource_billing' as 'resource_billing' | 'service_billing' | 'product_billing' | 'others',
+    from_date: new Date().toISOString().split('T')[0],
+    to_date: new Date().toISOString().split('T')[0],
+    revenue_amount: '',
+    other_details: '',
+    organization_id: organizationId || ''
+  });
+
+  useEffect(() => {
+    if (editingRevenue) {
+      setFormData({
+        billing_type: editingRevenue.billing_type,
+        billing_sub_type: editingRevenue.billing_sub_type,
+        from_date: editingRevenue.from_date,
+        to_date: editingRevenue.to_date,
+        revenue_amount: editingRevenue.revenue_amount.toString(),
+        other_details: editingRevenue.other_details || '',
+        organization_id: editingRevenue.organization_id
+      });
+    } else {
+      setFormData({
+        billing_type: 'Direct',
+        billing_sub_type: 'resource_billing',
+        from_date: new Date().toISOString().split('T')[0],
+        to_date: new Date().toISOString().split('T')[0],
+        revenue_amount: '',
+        other_details: '',
+        organization_id: organizationId || ''
+      });
+    }
+  }, [editingRevenue, organizationId, isOpen]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizationId) {
+      alert('Organization ID is required');
+      return;
+    }
+
+    const revenueAmount = parseFloat(formData.revenue_amount);
+    if (isNaN(revenueAmount)) {
+      alert('Please enter a valid revenue amount');
+      return;
+    }
+
+    if (editingRevenue) {
+      // Update existing revenue - ambiguity is likely in triggers, reverting to simple update
+      const { error: updateError } = await supabase
+        .from('revenues')
+        .update({
+          billing_type: formData.billing_type,
+          billing_sub_type: formData.billing_sub_type,
+          from_date: formData.from_date,
+          to_date: formData.to_date,
+          revenue_amount: revenueAmount,
+          other_details: formData.other_details || null
+        })
+        .filter('id', 'eq', editingRevenue.id)
+        .filter('organization_id', 'eq', organizationId);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        alert(`Error updating revenue: ${updateError.message}`);
+      } else {
+        onClose();
+      }
+    } else {
+      // Create new revenue - include organization_id
+      const { error: insertError } = await supabase
+        .from('revenues')
+        .insert({
+          organization_id: organizationId,
+          billing_type: formData.billing_type,
+          billing_sub_type: formData.billing_sub_type,
+          from_date: formData.from_date,
+          to_date: formData.to_date,
+          revenue_amount: revenueAmount,
+          other_details: formData.other_details || null
+        });
+
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        alert(`Error creating revenue: ${insertError.message}`);
+      } else {
+        onClose();
+      }
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">{editingRevenue ? 'Edit' : 'Add New'} Revenue</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="billing_type">Billing Type</Label>
+            <Select
+              value={formData.billing_type}
+              onValueChange={(value) => handleSelectChange('billing_type', value)}
+            >
+              <SelectTrigger className="w-full mt-1">
+                <SelectValue placeholder="Select Billing Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Direct">Direct</SelectItem>
+                <SelectItem value="Indirect">Indirect</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="billing_sub_type">Billing Sub-Type</Label>
+            <Select
+              value={formData.billing_sub_type}
+              onValueChange={(value) => handleSelectChange('billing_sub_type', value)}
+            >
+              <SelectTrigger className="w-full mt-1">
+                <SelectValue placeholder="Select Billing Sub-Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="resource_billing">Resource Billing</SelectItem>
+                <SelectItem value="service_billing">Service Billing</SelectItem>
+                <SelectItem value="product_billing">Product Billing</SelectItem>
+                <SelectItem value="others">Others</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="from_date">From Date</Label>
+            <Input
+              id="from_date"
+              name="from_date"
+              type="date"
+              value={formData.from_date}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="to_date">To Date</Label>
+            <Input
+              id="to_date"
+              name="to_date"
+              type="date"
+              value={formData.to_date}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="revenue_amount">Revenue Amount</Label>
+            <Input
+              id="revenue_amount"
+              name="revenue_amount"
+              type="number"
+              step="0.01"
+              value={formData.revenue_amount}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="other_details">Other Details (Optional)</Label>
+            <Input
+              id="other_details"
+              name="other_details"
+              value={formData.other_details}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-6">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {editingRevenue ? 'Update' : 'Add'} Revenue
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 function InvoiceManagementSection({ organizationId }: { organizationId: string | null }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   const fetchInvoices = async () => {
-     if (!organizationId) {
-        setInvoices([]);
-        return;
-     }
-    const { data, error } = await supabase.from('invoices').select('*').eq('organization_id', organizationId).order('invoice_date', { ascending: false });
+    if (!organizationId) {
+      setInvoices([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('invoice_date', { ascending: false });
     if (error) {
       console.error("Error fetching invoices:", error);
       setInvoices([]);
@@ -870,29 +1441,47 @@ function InvoiceManagementSection({ organizationId }: { organizationId: string |
     fetchInvoices();
   }, [organizationId]);
 
-   const handleModalClose = () => {
+  const handleModalClose = () => {
     setIsInvoiceModalOpen(false);
-    fetchInvoices(); // Refetch after modal close
+    setEditingInvoice(null);
+    fetchInvoices();
   };
 
-   const handleDeleteInvoice = async (invoiceId: string) => {
+  const handleDeleteInvoice = async (invoiceId: string) => {
     const confirmation = window.confirm("Are you sure you want to delete this invoice? This cannot be undone.");
     if (!confirmation) return;
-     // Check if invoice is linked to any costs before deleting
-     const { data: linkedCosts, error: checkError } = await supabase.from('invoices').select('vendor_cost_id, miscellaneous_cost_id').eq('id', invoiceId).single();
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is okay
-         alert("Error checking if invoice is linked. Deletion aborted.");
-         return;
+
+    // Check if invoice is linked to any costs before deleting
+    const { data: linkedCosts, error: checkError } = await supabase
+      .from('invoices')
+      .select('vendor_cost_id, miscellaneous_cost_id')
+      .eq('id', invoiceId)
+      .single();
+    if (checkError && checkError.code !== 'PGRST116') {
+      alert("Error checking if invoice is linked. Deletion aborted.");
+      return;
     }
     if (linkedCosts?.vendor_cost_id || linkedCosts?.miscellaneous_cost_id) {
-        alert("Cannot delete invoice because it is linked to a cost entry. Please unlink it from the cost entry first (by editing the cost).");
-        return;
+      alert("Cannot delete invoice because it is linked to a cost entry. Please unlink it from the cost entry first (by editing the cost).");
+      return;
     }
+
     // Proceed with deletion if not linked
-    const { error: deleteError } = await supabase.from('invoices').delete().eq('id', invoiceId);
-    if (deleteError) alert(`Error deleting invoice: ${deleteError.message}`);
-    else fetchInvoices(); // Refetch after delete
-   };
+    const { error: deleteError } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', invoiceId);
+    if (deleteError) {
+      alert(`Error deleting invoice: ${deleteError.message}`);
+    } else {
+      fetchInvoices();
+    }
+  };
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setIsInvoiceModalOpen(true);
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
@@ -904,46 +1493,78 @@ function InvoiceManagementSection({ organizationId }: { organizationId: string |
         </Button>
       </div>
       <div className="overflow-x-auto">
-         <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform</th>
-                 <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-             {!organizationId ? (
-                  <tr><td colSpan={6} className="text-center py-4 text-gray-500">Select a program to view invoices.</td></tr>
-             ) : invoices.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-4 text-gray-500">No invoices found for this organization.</td></tr>
-             ) : (
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Platform</th>
+              <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {!organizationId ? (
+              <tr><td colSpan={6} className="text-center py-4 text-gray-500">Select a program to view invoices.</td></tr>
+            ) : invoices.length === 0 ? (
+              <tr><td colSpan={6} className="text-center py-4 text-gray-500">No invoices found for this organization.</td></tr>
+            ) : (
               invoices.map((invoice) => (
                 <tr key={invoice.id}>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{new Date(invoice.invoice_date + 'T00:00:00Z').toLocaleDateString()}</td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.name}</td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{invoice.type}</td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">${invoice.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{invoice.platform || '-'}</td>
-                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
-                       <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)} title="Delete Invoice">
-                           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
-                       </Button>
-                   </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{new Date(invoice.invoice_date + 'T00:00:00Z').toLocaleDateString()}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.name}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{invoice.type}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-right">${invoice.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{invoice.platform || '-'}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                    <div className="flex justify-center space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEditInvoice(invoice)} 
+                        title="Edit Invoice"
+                      >
+                        <Edit className="h-4 w-4 text-blue-500 hover:text-blue-700"/>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeleteInvoice(invoice.id)} 
+                        title="Delete Invoice"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))
-             )}
-            </tbody>
-          </table>
+            )}
+          </tbody>
+        </table>
       </div>
-       {/* Ensure InvoiceModal is correctly defined and imported/available */} 
-       {organizationId && <InvoiceModal isOpen={isInvoiceModalOpen} onClose={handleModalClose} organizationId={organizationId} />} 
+      {isInvoiceModalOpen && (
+        <ImportedInvoiceModal
+          isOpen={isInvoiceModalOpen}
+          onClose={handleModalClose}
+          organizationId={organizationId}
+          editingInvoice={editingInvoice}
+        />
+      )}
     </div>
   );
 }
+
+// Helper function to convert FormData to Cost
+const convertFormDataToCost = (formData: FormData | null): Cost | null => {
+  if (!formData) return null;
+  
+  const { cost: formCost, ...rest } = formData;
+  return {
+    ...rest,
+    cost: typeof formCost === 'string' ? parseFloat(formCost) || undefined : formCost
+  } as Cost;
+};
 
 function CostManagementSection({ organizationId }: { organizationId: string | null }) {
   const [activeTab, setActiveTab] = useState<'resource' | 'vendor' | 'misc'>('resource');
@@ -953,6 +1574,7 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
   const [vendorCosts, setVendorCosts] = useState<FormData[]>([]);
   const [miscCosts, setMiscCosts] = useState<FormData[]>([]);
   const [isLevelCostsModalOpen, setIsLevelCostsModalOpen] = useState(false);
+  const [editingCost, setEditingCost] = useState<FormData | null>(null);
 
   const verifyConnection = async () => {
     try {
@@ -981,21 +1603,37 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
       }
       // Fetch Resource Costs
       const { data: resourceData, error: resourceError } = await supabase.from('resource_costs')
-        .select(`*, user:users!resource_costs_user_id_fkey(id, name), manager:users!resource_costs_manager_id_fkey(id, name), organization:organizations(id, name)`)
+        .select(`
+          *,
+          user:users!resource_costs_user_id_fkey(id, name, email),
+          manager:users!resource_costs_manager_id_fkey(id, name, email),
+          organization:organizations(id, name)
+        `)
         .eq('organization_id', organizationId);
        if (resourceError) console.error("Error fetching resource costs:", resourceError);
        else if (resourceData) setResourceCosts(resourceData as FormData[]); else setResourceCosts([]);
 
       // Fetch Vendor Costs
       const { data: vendorData, error: vendorError } = await supabase.from('vendor_costs')
-        .select(`*, organization:organizations!vendor_costs_organization_id_fkey(id, name), approver:users!vendor_costs_approver_id_fkey(id, name), invoice:invoices!vendor_costs_invoice_id_fkey(id, name)`)
+        .select(`
+          *,
+          organization:organizations!vendor_costs_organization_id_fkey(id, name),
+          approver:users!vendor_costs_approver_id_fkey(id, name, email),
+          invoice:invoices!vendor_costs_invoice_id_fkey(id, name)
+        `)
          .eq('organization_id', organizationId);
        if (vendorError) console.error("Error fetching vendor costs:", vendorError);
        else if (vendorData) setVendorCosts(vendorData as FormData[]); else setVendorCosts([]);
 
-      // Fetch Miscellaneous Costs (using 'misc' internally, corresponds to miscellaneous_costs table)
+      // Fetch Miscellaneous Costs 
       const { data: miscData, error: miscError } = await supabase.from('miscellaneous_costs')
-        .select(`*, billed_by:users!miscellaneous_costs_billed_by_id_fkey(id, name), approved_by:users!miscellaneous_costs_approved_by_id_fkey(id, name), organization:organizations!miscellaneous_costs_organization_id_fkey(id, name), invoice:invoices!miscellaneous_costs_invoice_id_fkey(id, name)`)
+        .select(`
+          *,
+          billed_by:users!miscellaneous_costs_billed_by_id_fkey(id, name, email),
+          approved_by:users!miscellaneous_costs_approved_by_id_fkey(id, name, email),
+          organization:organizations!miscellaneous_costs_organization_id_fkey(id, name),
+          invoice:invoices!miscellaneous_costs_invoice_id_fkey(id, name)
+        `)
          .eq('organization_id', organizationId);
       if (miscError) console.error("Error fetching misc costs:", miscError);
       else if (miscData) setMiscCosts(miscData as FormData[]); else setMiscCosts([]);
@@ -1010,9 +1648,10 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
     setIsModalOpen(true);
   };
 
-  const handleModalClose = () => {
+  const handleModalClose = async () => { // Make async
     setIsModalOpen(false);
-    fetchCosts();
+    setEditingCost(null);
+    await fetchCosts(); // Wait for fetch to complete
   };
 
   const handleDeleteCost = async (costId: string, costType: 'resource' | 'vendor' | 'misc') => {
@@ -1042,6 +1681,13 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
     fetchCosts();
   };
 
+  const handleEditCost = (cost: FormData, type: 'resource' | 'vendor' | 'misc') => {
+    // Since FormData.cost is already a number, we can directly set it
+    setEditingCost(cost);
+    setModalType(type);
+    setIsModalOpen(true);
+  };
+
   const renderCostList = () => {
     let costsToRender: FormData[] = [];
     let headers: string[] = [];
@@ -1065,17 +1711,34 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
                : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No resource costs found.</td></tr>)
                : costsToRender.map((cost) => (
                 <tr key={cost.id}>
-                  <td className={tdPrimaryClasses}>{cost.user?.name || 'N/A'}</td>
-                  <td className={tdClasses}>{cost.manager?.name || '-'}</td>
+                    {/* Display user name or email or id */}
+                    <td className={tdPrimaryClasses}>{cost.user?.name || cost.user?.email || (cost.user_id ? `ID: ${cost.user_id.substring(0,6)}...` : 'N/A')}</td>
+                    {/* Display manager name or email or id */}
+                    <td className={tdClasses}>{cost.manager?.name || cost.manager?.email || (cost.manager_id ? `ID: ${cost.manager_id.substring(0,6)}...` : '-')}</td>
                   <td className={tdClasses}>{cost.start_date ? new Date(cost.start_date + 'T00:00:00Z').toLocaleDateString() : '-'}</td>
                   <td className={tdClasses}>{cost.end_date ? new Date(cost.end_date + 'T00:00:00Z').toLocaleDateString() : '-'}</td>
                   <td className={tdClasses}>{cost.current_level || cost.starting_level || '-'}</td>
                   <td className={tdClasses}>{cost.status || '-'}</td>
                   <td className={tdClasses}>{cost.billing || '-'}</td>
                    <td className={tdCenterClasses}>
-                       <Button variant="ghost" size="sm" onClick={() => handleDeleteCost(cost.id!, 'resource')} title="Delete Resource Cost">
-                           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
-                       </Button>
+                       <div className="flex justify-center space-x-2">
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleEditCost(cost, 'resource')} 
+                               title="Edit Resource Cost"
+                           >
+                               <Edit className="h-4 w-4 text-blue-500 hover:text-blue-700"/>
+                           </Button>
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleDeleteCost(cost.id!, 'resource')} 
+                               title="Delete Resource Cost"
+                           >
+                               <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                           </Button>
+                       </div>
                    </td>
                 </tr>
               ))}
@@ -1093,18 +1756,41 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
               : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No vendor costs found.</td></tr>)
               : costsToRender.map((cost) => (
                 <tr key={cost.id}>
+                    {/* Display user name or fallback to ID */}
                   <td className={tdPrimaryClasses}>{cost.vendor_name}</td>
+                    {/* Display organization name */}
                   <td className={tdClasses}>{cost.organization?.name || '-'}</td>
+                    {/* Display cycle */}
                   <td className={tdClasses}>{cost.cycle || '-'}</td>
+                    {/* Display cost */}
                   <td className={tdRightClasses}>${cost.cost ? Number(cost.cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                  <td className={tdClasses}>{cost.approver?.name || '-'}</td>
+                    {/* Display approver name or email or id */}
+                    <td className={tdClasses}>{cost.approver?.name || cost.approver?.email || (cost.approver_id ? `ID: ${cost.approver_id.substring(0,6)}...` : '-')}</td>
+                    {/* Display start date */}
                   <td className={tdClasses}>{cost.start_date ? new Date(cost.start_date + 'T00:00:00Z').toLocaleDateString() : '-'}</td>
+                    {/* Display end date */}
                   <td className={tdClasses}>{cost.end_date ? new Date(cost.end_date + 'T00:00:00Z').toLocaleDateString() : '-'}</td>
+                    {/* Display invoice name/id */}
                   <td className={tdClasses} title={cost.invoice?.id}>{cost.invoice ? cost.invoice.name : '-'}</td>
                    <td className={tdCenterClasses}>
-                       <Button variant="ghost" size="sm" onClick={() => handleDeleteCost(cost.id!, 'vendor')} title="Delete Vendor Cost">
-                           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
-                       </Button>
+                       <div className="flex justify-center space-x-2">
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleEditCost(cost, 'vendor')} 
+                               title="Edit Vendor Cost"
+                           >
+                               <Edit className="h-4 w-4 text-blue-500 hover:text-blue-700"/>
+                           </Button>
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleDeleteCost(cost.id!, 'vendor')} 
+                               title="Delete Vendor Cost"
+                           >
+                               <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                           </Button>
+                       </div>
                    </td>
                 </tr>
               ))}
@@ -1122,16 +1808,37 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
                : costsToRender.length === 0 ? (<tr><td colSpan={headers.length} className="text-center py-4 text-gray-500">No miscellaneous costs found.</td></tr>)
                : costsToRender.map((cost) => (
                 <tr key={cost.id}>
+                    {/* Display user name or fallback to ID */}
                    <td className={tdPrimaryClasses}>{cost.name}</td>
+                    {/* Display cost */}
                    <td className={tdRightClasses}>${cost.cost ? Number(cost.cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                   <td className={tdClasses}>{cost.billed_by?.name || '-'}</td>
-                   <td className={tdClasses}>{cost.approved_by?.name || '-'}</td>
+                    {/* Display billed by name or email or id */}
+                    <td className={tdClasses}>{cost.billed_by?.name || cost.billed_by?.email || (cost.billed_by_id ? `ID: ${cost.billed_by_id.substring(0,6)}...` : '-')}</td>
+                    {/* Display approved by name or email or id */}
+                    <td className={tdClasses}>{cost.approved_by?.name || cost.approved_by?.email || (cost.approved_by_id ? `ID: ${cost.approved_by_id.substring(0,6)}...` : '-')}</td>
+                    {/* Display created date */}
                    <td className={tdClasses}>{cost.created_at ? new Date(cost.created_at).toLocaleDateString() : '-'}</td>
+                    {/* Display invoice name/id */}
                    <td className={tdClasses} title={cost.invoice?.id}>{cost.invoice ? cost.invoice.name : '-'}</td>
                    <td className={tdCenterClasses}>
-                       <Button variant="ghost" size="sm" onClick={() => handleDeleteCost(cost.id!, 'misc')} title="Delete Misc Cost">
-                           <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
-                       </Button>
+                       <div className="flex justify-center space-x-2">
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleEditCost(cost, 'misc')} 
+                               title="Edit Misc Cost"
+                           >
+                               <Edit className="h-4 w-4 text-blue-500 hover:text-blue-700"/>
+                           </Button>
+                           <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               onClick={() => handleDeleteCost(cost.id!, 'misc')} 
+                               title="Delete Misc Cost"
+                           >
+                               <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                           </Button>
+                       </div>
                    </td>
                 </tr>
               ))}
@@ -1163,7 +1870,14 @@ function CostManagementSection({ organizationId }: { organizationId: string | nu
         {renderCostList()}
       </div>
       {isModalOpen && (
-        <CostManagementModal isOpen={isModalOpen} onClose={handleModalClose} type={modalType} organizationId={organizationId} />
+        <CostManagementModal
+          key={editingCost?.id || 'new'} // Add key prop here
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          type={modalType}
+          organizationId={organizationId}
+          editingCost={editingCost}
+        />
       )}
       <Button onClick={() => setIsLevelCostsModalOpen(true)} variant="outline" size="sm" disabled={!organizationId}>
         <Settings className="h-4 w-4 mr-2" />
@@ -1253,7 +1967,7 @@ function LevelCostsModal({
       <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Manage Level Costs</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal" aria-label="Close modal">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -1336,179 +2050,10 @@ function LevelCostsModal({
   );
 }
 
-function RevenueModal({
-  isOpen,
-  onClose,
-  organizationId
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  organizationId: string | null;
-}) {
-  const [formData, setFormData] = useState({
-    billing_type: 'Direct' as 'Direct' | 'Indirect',
-    billing_sub_type: 'resource_billing' as 'resource_billing' | 'service_billing' | 'product_billing' | 'others',
-    from_date: '',
-    to_date: '',
-    revenue_amount: '',
-    other_details: ''
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!organizationId) {
-      alert('Organization ID is required');
-      return;
-    }
-
-    const revenueAmount = parseFloat(formData.revenue_amount);
-    if (isNaN(revenueAmount)) {
-      alert('Please enter a valid revenue amount');
-      return;
-    }
-
-    const { error } = await supabase.from('revenues').insert([{
-      ...formData,
-      organization_id: organizationId,
-      revenue_amount: revenueAmount
-    }]);
-
-    if (error) {
-      alert(`Error creating revenue entry: ${error.message}`);
-    } else {
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Add Revenue Entry</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg" title="Close modal">
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="billing_type">Billing Type</Label>
-            <Select
-              name="billing_type"
-              value={formData.billing_type}
-              onValueChange={(value: 'Direct' | 'Indirect') => handleSelectChange('billing_type', value)}
-            >
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Select Billing Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Direct">Direct</SelectItem>
-                <SelectItem value="Indirect">Indirect</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="billing_sub_type">Billing Sub-Type</Label>
-            <Select
-              name="billing_sub_type"
-              value={formData.billing_sub_type}
-              onValueChange={(value: 'resource_billing' | 'service_billing' | 'product_billing' | 'others') => 
-                handleSelectChange('billing_sub_type', value)}
-            >
-              <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Select Billing Sub-Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="resource_billing">Resource Billing</SelectItem>
-                <SelectItem value="service_billing">Service Billing</SelectItem>
-                <SelectItem value="product_billing">Product Billing</SelectItem>
-                <SelectItem value="others">Others</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="from_date">From Date</Label>
-              <Input
-                id="from_date"
-                name="from_date"
-                type="date"
-                value={formData.from_date}
-                onChange={handleInputChange}
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="to_date">To Date</Label>
-              <Input
-                id="to_date"
-                name="to_date"
-                type="date"
-                value={formData.to_date}
-                onChange={handleInputChange}
-                required
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="revenue_amount">Revenue Amount</Label>
-            <Input
-              id="revenue_amount"
-              name="revenue_amount"
-              type="number"
-              step="0.01"
-              value={formData.revenue_amount}
-              onChange={handleInputChange}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          {formData.billing_sub_type === 'others' && (
-            <div>
-              <Label htmlFor="other_details">Other Details</Label>
-              <Input
-                id="other_details"
-                name="other_details"
-                value={formData.other_details}
-                onChange={handleInputChange}
-                placeholder="Please specify the billing details"
-                className="mt-1"
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end space-x-3 pt-6">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Revenue</Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 function RevenueManagementSection({ organizationId }: { organizationId: string | null }) {
   const [revenues, setRevenues] = useState<Revenue[]>([]);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+  const [editingRevenue, setEditingRevenue] = useState<Revenue | null>(null);
 
   const fetchRevenues = async () => {
     if (!organizationId) {
@@ -1520,12 +2065,11 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
       .select('*')
       .eq('organization_id', organizationId)
       .order('from_date', { ascending: false });
-
     if (error) {
       console.error("Error fetching revenues:", error);
       setRevenues([]);
     } else if (data) {
-      setRevenues(data);
+      setRevenues(data as Revenue[]);
     }
   };
 
@@ -1535,11 +2079,12 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
 
   const handleModalClose = () => {
     setIsRevenueModalOpen(false);
+    setEditingRevenue(null);
     fetchRevenues();
   };
 
   const handleDeleteRevenue = async (revenueId: string) => {
-    const confirmation = window.confirm("Are you sure you want to delete this revenue entry?");
+    const confirmation = window.confirm("Are you sure you want to delete this revenue entry? This cannot be undone.");
     if (!confirmation) return;
 
     const { error } = await supabase
@@ -1552,6 +2097,11 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
     } else {
       fetchRevenues();
     }
+  };
+
+  const handleEditRevenue = (revenue: Revenue) => {
+    setEditingRevenue(revenue);
+    setIsRevenueModalOpen(true);
   };
 
   return (
@@ -1605,14 +2155,24 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{revenue.other_details || '-'}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleDeleteRevenue(revenue.id)}
-                      title="Delete Revenue Entry"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
-                    </Button>
+                    <div className="flex justify-center space-x-2">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditRevenue(revenue)} 
+                            title="Edit Revenue Entry"
+                        >
+                            <Edit className="h-4 w-4 text-blue-500 hover:text-blue-700"/>
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDeleteRevenue(revenue.id)} 
+                            title="Delete Revenue Entry"
+                        >
+                            <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700"/>
+                        </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1625,6 +2185,7 @@ function RevenueManagementSection({ organizationId }: { organizationId: string |
           isOpen={isRevenueModalOpen}
           onClose={handleModalClose}
           organizationId={organizationId}
+          editingRevenue={editingRevenue}
         />
       )}
     </div>
@@ -2046,6 +2607,7 @@ function NavigationMenu({ activeSection, onSectionChange }: {
                 ? 'bg-violet-100 text-violet-700'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
+            title={`Navigate to ${item.label}`}
             aria-label={`Navigate to ${item.label} section`}
             aria-current={activeSection === item.id ? 'page' : undefined}
           >

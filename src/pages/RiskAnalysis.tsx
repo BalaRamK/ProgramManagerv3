@@ -26,11 +26,22 @@ interface Program {
   organization_id: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+}
+
 interface Milestone {
   id: string;
   title: string;
   due_date: string;
   status: string;
+}
+
+interface FilterState {
+  organization: string;
+  program: string;
+  milestone: string;
 }
 
 export function RiskAnalysis() {
@@ -39,6 +50,8 @@ export function RiskAnalysis() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddingRisk, setIsAddingRisk] = useState<boolean>(false);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<string>('');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [showClosedRisks, setShowClosedRisks] = useState<boolean>(false);
@@ -54,13 +67,31 @@ export function RiskAnalysis() {
     update_date: format(new Date(), 'yyyy-MM-dd'),
     status: 'open'
   });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    organization: '',
+    program: '',
+    milestone: ''
+  });
 
-  // Fetch risks and programs from Supabase
+  // Fetch risks, programs, and organizations from Supabase
   useEffect(() => {
     const fetchData = async () => {
       try {
         const { data: userData } = await supabase.auth.getUser();
         if (!userData.user) return;
+
+        // Fetch organizations
+        const { data: orgsData, error: orgsError } = await supabase
+          .from('organizations')
+          .select('id, name');
+
+        if (orgsError) {
+          console.error('Error fetching organizations:', orgsError);
+          return;
+        }
+
+        setOrganizations(orgsData || []);
 
         // Fetch risks with all fields including status
         const { data: risksData, error: risksError } = await supabase
@@ -113,6 +144,64 @@ export function RiskAnalysis() {
 
     fetchData();
   }, []);
+
+  // Filter programs based on selected organization
+  const filteredPrograms = selectedOrganization
+    ? programs.filter(program => program.organization_id === selectedOrganization)
+    : programs;
+
+  // Update the filtering logic
+  const filteredRisks = risks.filter(risk => {
+    if (filters.organization) {
+      const program = programs.find(p => p.id === risk.program_id);
+      if (program?.organization_id !== filters.organization) return false;
+    }
+    if (filters.program && risk.program_id !== filters.program) return false;
+    if (filters.milestone && risk.milestone_id !== filters.milestone) return false;
+    return true;
+  });
+
+  const openRisks = filteredRisks.filter(risk => risk.status === 'open');
+  const closedRisks = filteredRisks.filter(risk => risk.status === 'closed');
+
+  // Add function to fetch programs for an organization
+  const fetchProgramsForOrganization = async (organizationId: string) => {
+    const { data: programsData, error } = await supabase
+      .from('programs')
+      .select('id, name, organization_id')
+      .eq('organization_id', organizationId);
+
+    if (error) {
+      console.error('Error fetching programs:', error);
+      return;
+    }
+
+    setPrograms(programsData || []);
+  };
+
+  // Update organization selection handler
+  const handleOrganizationChange = (organizationId: string) => {
+    setSelectedOrganization(organizationId);
+    setNewRisk({ ...newRisk, program_id: null, milestone_id: null });
+    if (organizationId) {
+      fetchProgramsForOrganization(organizationId);
+    } else {
+      // Fetch all programs if no organization is selected
+      const fetchAllPrograms = async () => {
+        const { data: programsData, error } = await supabase
+          .from('programs')
+          .select('id, name, organization_id');
+
+        if (error) {
+          console.error('Error fetching programs:', error);
+          return;
+        }
+
+        setPrograms(programsData || []);
+      };
+      fetchAllPrograms();
+    }
+  };
 
   // Add function to fetch milestones for a program
   const fetchMilestones = async (programId: string) => {
@@ -331,9 +420,6 @@ export function RiskAnalysis() {
     }
   };
 
-  const openRisks = risks.filter(risk => risk.status === 'open');
-  const closedRisks = risks.filter(risk => risk.status === 'closed');
-
   // Update the table headers and rows to include program and milestone info
   const tableHeaders = (
     <tr>
@@ -379,6 +465,21 @@ export function RiskAnalysis() {
   const AddRiskForm = () => (
     <div className="space-y-4">
       <div>
+        <label htmlFor="organization-select" className="block text-sm font-medium text-gray-700">Organization</label>
+        <select
+          id="organization-select"
+          value={selectedOrganization}
+          onChange={(e) => handleOrganizationChange(e.target.value)}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+        >
+          <option value="">Select an organization</option>
+          {organizations.map(org => (
+            <option key={org.id} value={org.id}>{org.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="program-select" className="block text-sm font-medium text-gray-700">Program</label>
         <select
           id="program-select"
@@ -387,7 +488,7 @@ export function RiskAnalysis() {
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
         >
           <option value="">Select a program</option>
-          {programs.map(program => (
+          {filteredPrograms.map(program => (
             <option key={program.id} value={program.id}>{program.name}</option>
           ))}
         </select>
@@ -563,6 +664,153 @@ export function RiskAnalysis() {
     </div>
   );
 
+  // Handler for filter changes
+  const handleFilterChange = (filterType: keyof FilterState, value: string) => {
+    const newFilters = { ...filters, [filterType]: value };
+    
+    // Reset dependent filters
+    if (filterType === 'organization') {
+      newFilters.program = '';
+      newFilters.milestone = '';
+    } else if (filterType === 'program') {
+      newFilters.milestone = '';
+      if (value) {
+        fetchMilestones(value);
+      }
+    }
+    
+    setFilters(newFilters);
+  };
+
+  // Get filtered programs based on selected organization
+  const availablePrograms = filters.organization
+    ? programs.filter(program => program.organization_id === filters.organization)
+    : programs;
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      organization: '',
+      program: '',
+      milestone: ''
+    });
+  };
+
+  // Replace the existing filter section with this new design
+  const FiltersSection = () => (
+    <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <Filter className="h-5 w-5 text-gray-500" />
+          <h3 className="text-lg font-medium text-gray-900">Filters</h3>
+        </div>
+        {(filters.organization || filters.program || filters.milestone) && (
+          <button
+            onClick={clearFilters}
+            className="text-sm text-violet-600 hover:text-violet-700"
+          >
+            Clear all filters
+          </button>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Organization Filter */}
+        <div>
+          <label htmlFor="filter-organization" className="block text-sm font-medium text-gray-700 mb-1">
+            Organization
+          </label>
+          <select
+            id="filter-organization"
+            value={filters.organization}
+            onChange={(e) => handleFilterChange('organization', e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+          >
+            <option value="">All Organizations</option>
+            {organizations.map(org => (
+              <option key={org.id} value={org.id}>{org.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Program Filter */}
+        <div>
+          <label htmlFor="filter-program" className="block text-sm font-medium text-gray-700 mb-1">
+            Program
+          </label>
+          <select
+            id="filter-program"
+            value={filters.program}
+            onChange={(e) => handleFilterChange('program', e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+          >
+            <option value="">All Programs</option>
+            {availablePrograms.map(program => (
+              <option key={program.id} value={program.id}>{program.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Milestone Filter */}
+        <div>
+          <label htmlFor="filter-milestone" className="block text-sm font-medium text-gray-700 mb-1">
+            Milestone
+          </label>
+          <select
+            id="filter-milestone"
+            value={filters.milestone}
+            onChange={(e) => handleFilterChange('milestone', e.target.value)}
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
+          >
+            <option value="">All Milestones</option>
+            {milestones.map(milestone => (
+              <option key={milestone.id} value={milestone.id}>{milestone.title}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Active Filters Display */}
+      {(filters.organization || filters.program || filters.milestone) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {filters.organization && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-800">
+              {organizations.find(org => org.id === filters.organization)?.name}
+              <button
+                onClick={() => handleFilterChange('organization', '')}
+                className="ml-2 inline-flex items-center"
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {filters.program && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-800">
+              {programs.find(prog => prog.id === filters.program)?.name}
+              <button
+                onClick={() => handleFilterChange('program', '')}
+                className="ml-2 inline-flex items-center"
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {filters.milestone && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-violet-100 text-violet-800">
+              {milestones.find(mile => mile.id === filters.milestone)?.title}
+              <button
+                onClick={() => handleFilterChange('milestone', '')}
+                className="ml-2 inline-flex items-center"
+              >
+                ×
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
@@ -570,6 +818,9 @@ export function RiskAnalysis() {
           <h1 className="text-2xl font-bold text-gray-900">Risk Analysis</h1>
           <p className="text-gray-600">Manage and analyze program risks.</p>
         </div>
+
+        {/* Filters Section */}
+        <FiltersSection />
 
         {/* Risk Management Section */}
         <section className="bg-white rounded-lg shadow-sm p-6">

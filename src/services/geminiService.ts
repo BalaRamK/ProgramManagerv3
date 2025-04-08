@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+// WARNING: The VITE_GEMINI_API_KEY should NEVER be exposed to the client-side.
+// API calls to Gemini must be routed through a secure backend endpoint (e.g., Supabase Edge Function or Vercel Function)
+// which can securely add the API key before forwarding the request.
 const MODEL_NAME = 'gemini-2.0-flash';
 
 export interface Message {
@@ -51,66 +53,38 @@ async function getUserContext(userId: string) {
 
 export async function generateResponse(messages: Message[], userId: string, context?: any): Promise<string> {
   try {
-    if (!GEMINI_API_KEY) {
-      throw new Error('Gemini API key is not configured');
-    }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,
+    // Call the Supabase Edge Function using the Supabase client SDK
+    const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
+      'generate-gemini-response', // Function name
       {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: messages[messages.length - 1].content
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
+        body: { // Pass data in the 'body' property
+          messages: messages,
+          userId: userId,
+          context: context
+        }
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Gemini API Error:', errorData);
-      throw new Error(`Gemini API error: ${response.status} - ${errorData.error?.message || JSON.stringify(errorData)}`);
+    if (functionError) {
+      // Handle errors returned by the invoke method itself (e.g., network issues, function not found - though 404 should be caught here)
+      console.error('Supabase function invoke Error:', functionError);
+      throw new Error(`Failed to invoke Supabase function: ${functionError.message}`);
     }
 
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    // The 'functionResponse' variable now holds the data returned by the Edge Function.
+    // The function returns the raw Gemini response structure.
+    if (!functionResponse?.candidates?.[0]?.content?.parts?.[0]?.text) {
+       console.error('Invalid response format from Edge Function:', functionResponse);
+       throw new Error('Received unexpected response format from the backend.');
+    }
+
+    // Extract the text like before
+    return functionResponse.candidates[0].content.parts[0].text;
+
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    throw error;
+    // Catch any other errors (including the ones thrown above)
+    console.error('Error generating response:', error);
+    throw new Error('Failed to generate response. Please try again.');
   }
 }
 

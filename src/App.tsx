@@ -73,48 +73,6 @@ function FeatureCard({ icon: Icon, title, description, benefit }: FeatureProps) 
   );
 }
 
-function PayPalButton() {
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://www.paypal.com/sdk/js?client-id=BAAIUjRaMZUIvr5D_GMrTEd7GGJzyd-RT2uJAtOo0rhQLi6TbmmmKYEoGTW19ggggyOLq-e3aAc_CAlVh0&components=hosted-buttons&disable-funding=venmo&currency=USD";
-    script.async = true;
-    document.body.appendChild(script);
-
-    script.onload = () => {
-      (window as any).paypal.HostedButtons({
-        hostedButtonId: "UHWR58Y523RKN"
-      }).render("#paypal-container-UHWR58Y523RKN");
-    };
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  return (
-    <div>
-      <style>
-        {`.pp-UHWR58Y523RKN {
-          text-align: center;
-          border: none;
-          border-radius: 0.25rem;
-          min-width: 11.625rem;
-          padding: 0 2rem;
-          height: 2.625rem;
-          font-weight: bold;
-          background-color: #FFD140;
-          color: #000000;
-          font-family: "Helvetica Neue", Arial, sans-serif;
-          font-size: 1rem;
-          line-height: 1.25rem;
-          cursor: pointer;
-        }`}
-      </style>
-      
-    </div>
-  );
-}
-
 function HomePage() {
   // Mock data used in the preview components remains the same
   const programStats = {
@@ -267,7 +225,7 @@ function HomePage() {
               Managing complex programs often means juggling spreadsheets, documents across different drives, endless email chains, and specialized tools for finance, risk, and planning. This fragmentation leads to missed insights, delayed decisions, and strategic misalignment.
             </p>
             <p className="mt-4 text-lg leading-8 text-gray-600 font-medium text-violet-700">
-              ProgramMatrix brings everything together, providing the single source of truth you need to lead with confidence.
+              ProgramMatrix replaces the chaos with a single source of truth.
             </p>
           </div>
         </div>
@@ -429,8 +387,6 @@ function HomePage() {
                   >
                     Sign Up Free
                   </Link>
-                   {/* PayPal Button (Optional Placement) */}
-                   {/* <div className="mt-4"><PayPalButton /></div> */}
                 </div>
               </div>
             </div>

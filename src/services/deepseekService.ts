@@ -1,5 +1,11 @@
-const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// REMOVED: API Key import - This should never be in client-side code.
+// const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
+
+// REMOVED: Direct API URL - Calls will go through the Edge Function.
+// const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+// Supabase Edge Function URL (Update <project-ref>)
+const EDGE_FUNCTION_URL = '/functions/v1/generate-deepseek-response'; // Replace with your actual Supabase Function URL if needed
 
 interface DeepseekResponse {
   suggestions: Array<{
@@ -13,6 +19,7 @@ interface DeepseekResponse {
   }>;
 }
 
+// This function now calls the secure Edge Function instead of DeepSeek directly.
 export async function generateDeepseekSuggestions(
   query: string,
   context: {
@@ -22,6 +29,8 @@ export async function generateDeepseekSuggestions(
     risks: any[];
   }
 ): Promise<DeepseekResponse> {
+
+  // The prompt construction remains largely the same, as it dictates the expected JSON output format.
   const prompt = `You are an AI assistant helping with program management scenario analysis.
 Current program context:
 - Budget: ${context.budget}%
@@ -52,62 +61,62 @@ Ensure that:
 3. The response is properly formatted as JSON`;
 
   try {
-    const response = await fetch(DEEPSEEK_API_URL, {
+    // Call the Supabase Edge Function
+    const response = await fetch(EDGE_FUNCTION_URL, { // Use the Edge Function URL
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        // Authorization is handled by the Edge Function now
+        // We might add Supabase Auth token here later if function requires user auth
+        // 'Authorization': `Bearer ${supabaseAccessToken}`,
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a program management AI assistant that provides scenario analysis and suggestions in JSON format.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-        response_format: { type: "json_object" }
+        // Send the necessary data to the Edge Function
+        // The Edge function needs the prompt to pass to DeepSeek
+        query: prompt, // Send the fully constructed prompt
+        context: context // Send context if needed by the function (currently function uses only query)
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('DeepSeek API Error Details:', {
+      // Error handling is now based on the Edge Function's response
+      const errorData = await response.json(); // Assume Edge Function returns JSON error
+      console.error('Edge Function Error Details:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorData
+        error: errorData?.error || errorData // Adapt based on function error format
       });
-      
-      // If the API key is invalid, disable DeepSeek integration
-      if (response.status === 401) {
-        console.warn('Invalid DeepSeek API key - falling back to rule-based suggestions');
-        throw new Error('Invalid DeepSeek API key');
-      }
-      
-      throw new Error(`DeepSeek API error: ${response.status} - ${response.statusText}`);
+
+      // The Edge Function handles API key errors internally.
+      // We just throw a generic error here if the function call fails.
+      throw new Error(`Edge function error: ${response.status} - ${errorData?.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response format from DeepSeek API');
+    // The Edge Function currently returns the raw DeepSeek API response.
+    // We need to parse the expected JSON content from that response, similar to before.
+    const deepseekRawResponse = await response.json();
+
+    if (!deepseekRawResponse.choices || !deepseekRawResponse.choices[0] || !deepseekRawResponse.choices[0].message) {
+      console.error("Invalid response format from Edge Function (expected DeepSeek format):", deepseekRawResponse);
+      throw new Error('Invalid response format received from backend function.');
     }
 
-    const content = data.choices[0].message.content;
+    const content = deepseekRawResponse.choices[0].message.content;
     try {
-      return JSON.parse(content);
+      // Parse the JSON string embedded in the content field
+      const parsedContent: DeepseekResponse = JSON.parse(content);
+      if (!parsedContent.suggestions) { // Basic validation
+        throw new Error('Parsed response does not contain suggestions.')
+      }
+      return parsedContent;
     } catch (parseError) {
-      console.error('Error parsing DeepSeek response:', parseError);
-      throw new Error('Invalid JSON response from DeepSeek API');
+      console.error('Error parsing content from Edge Function response:', content, parseError);
+      throw new Error('Invalid JSON content received from backend function.');
     }
   } catch (error) {
-    console.error('Error calling DeepSeek API:', error);
+    console.error('Error calling Edge Function for DeepSeek suggestions:', error);
+    // Re-throw the error so the calling service (aiService) can handle the fallback
     throw error;
   }
 } 

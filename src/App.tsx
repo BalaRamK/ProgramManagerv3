@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { OrganizationUserSettings } from './pages/OrganizationUserSettings';
 import NavNotificationBar from './components/NavNotificationBar';
+import { Features } from './pages/Features'; // Import the new Features page
 
 interface FeatureProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -115,518 +116,491 @@ function PayPalButton() {
 }
 
 function HomePage() {
-  // Mock data similar to what's in Dashboard.tsx
+  // Mock data used in the preview components remains the same
   const programStats = {
     budget: { total: 1250000, spent: 450000, remaining: 800000 },
     tasks: { total: 124, completed: 78, inProgress: 32, notStarted: 14 },
     risks: { total: 18, high: 3, medium: 7, low: 8 },
     timeline: { daysElapsed: 45, daysRemaining: 75, percentComplete: 38 }
   };
-
-  // Mock data for KPIs
   const kpiData = [
     { id: 1, name: 'Budget Utilization', value: '36%', trend: 'up', change: '4%' },
     { id: 2, name: 'Timeline Progress', value: '38%', trend: 'up', change: '2%' },
     { id: 3, name: 'Task Completion', value: '63%', trend: 'up', change: '5%' },
     { id: 4, name: 'Risk Mitigation', value: '72%', trend: 'down', change: '3%' }
   ];
-
-  // Mock data for upcoming milestones
   const upcomingMilestones = [
     { id: 1, title: 'Vendor Selection Finalized', date: 'Jun 15, 2025', status: 'on-track' },
     { id: 2, title: 'Prototype Testing Complete', date: 'Jun 28, 2025', status: 'at-risk' },
     { id: 3, title: 'Stakeholder Review Meeting', date: 'Jul 10, 2025', status: 'on-track' }
   ];
 
+  // Helper component for feature highlights
+  const FeatureHighlight = ({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>, title: string, description: string }) => (
+    <div className="flex items-start space-x-4">
+      <div className="flex-shrink-0 h-12 w-12 rounded-full bg-violet-100 flex items-center justify-center">
+        <Icon className="h-6 w-6 text-violet-600" />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <p className="mt-1 text-gray-600">{description}</p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-white mt-0">
-       <script 
-  src="https://www.paypal.com/sdk/js?client-id=BAAIUjRaMZUIvr5D_GMrTEd7GGJzyd-RT2uJAtOo0rhQLi6TbmmmKYEoGTW19ggggyOLq-e3aAc_CAlVh0&components=hosted-buttons&disable-funding=venmo&currency=USD">
-</script>
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <header className="relative overflow-hidden bg-white">
+      <header className="relative overflow-hidden bg-gray-50 py-20 sm:py-28 lg:py-32">
         <div className="absolute inset-0 gradient-bg opacity-5" />
-        <div className="relative">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Left Column - Dashboard Preview */}
-              <div className="bg-gray-50 rounded-xl shadow-lg overflow-hidden">
-                {/* Dashboard Header */}
-                <div className="bg-gray-900 p-3 text-white">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xl font-semibold">Program Overview</h2>
-                    <div className="flex items-center space-x-2">
-                      <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center">
-                        <UsersIcon className="h-5 w-5 text-violet-600" />
-                      </div>
-                      <span className="text-sm font-medium mt-0">Program Manager</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* KPI Overview */}
-                <div className="grid grid-cols-2 gap-4 p-4">
-                  {kpiData.map(kpi => (
-                    <div key={kpi.id} className="bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">{kpi.name}</p>
-                          <p className="text-xl font-bold mt-1">{kpi.value}</p>
-                        </div>
-                        <div className={`flex items-center ${kpi.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                          {kpi.trend === 'up' ? 
-                            <ArrowUpRight className="h-4 w-4" /> : 
-                            <ArrowDownRight className="h-4 w-4" />
-                          }
-                          <span className="text-xs font-medium ml-1">{kpi.change}</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${kpi.trend === 'up' ? 'bg-green-500' : 'bg-red-500'}`} 
-                          style={{ width: kpi.value }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Timeline Progress */}
-                <div className="p-4 border-t border-gray-100">
-                  <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-sm font-semibold">Timeline Progress</h3>
-                      <p className="text-xs text-gray-500">{programStats.timeline.daysElapsed + programStats.timeline.daysRemaining} days total</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="relative h-16 w-16">
-                        <svg className="h-full w-full" viewBox="0 0 100 100">
-                          <circle 
-                            cx="50" 
-                            cy="50" 
-                            r="45" 
-                            fill="none" 
-                            stroke="#f3f4f6" 
-                            strokeWidth="10"
-                          />
-                          <circle 
-                            cx="50" 
-                            cy="50" 
-                            r="45" 
-                            fill="none" 
-                            stroke="#8b5cf6" 
-                            strokeWidth="10"
-                            strokeDasharray="283"
-                            strokeDashoffset={283 * (1 - programStats.timeline.percentComplete / 100)}
-                            transform="rotate(-90 50 50)"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center flex-col">
-                          <span className="text-lg font-bold">{programStats.timeline.percentComplete}%</span>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-gray-50 rounded-lg p-2 text-center">
-                            <p className="text-xs text-gray-500">Days Elapsed</p>
-                            <p className="text-sm font-bold">{programStats.timeline.daysElapsed}</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-2 text-center">
-                            <p className="text-xs text-gray-500">Remaining</p>
-                            <p className="text-sm font-bold">{programStats.timeline.daysRemaining}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upcoming Milestones */}
-                <div className="p-4 border-t border-gray-100">
-                  <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <h3 className="text-sm font-semibold mb-3">Upcoming Milestones</h3>
-                    <div className="space-y-3">
-                      {upcomingMilestones.map((milestone) => (
-                        <div key={milestone.id} className="flex items-center p-2 rounded-md bg-gray-50">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                            milestone.status === 'on-track' ? 'bg-green-100' : 'bg-orange-100'
-                          } mr-3`}>
-                            <Calendar className={`h-4 w-4 ${
-                              milestone.status === 'on-track' ? 'text-green-600' : 'text-orange-600'
-                            }`} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{milestone.title}</p>
-                            <p className="text-xs text-gray-500">{milestone.date}</p>
-                          </div>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            milestone.status === 'on-track' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {milestone.status === 'on-track' ? 'On Track' : 'At Risk'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left Column - Text Content */}
+            <div className="text-center lg:text-left">
+              <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+                <span className="block">Stop Juggling Tools.</span>
+                <span className="block bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent mt-1">
+                  Manage Your Entire Program Here.
+                </span>
+              </h1>
+              <p className="mt-6 text-lg leading-8 text-gray-600 max-w-xl mx-auto lg:mx-0">
+                ProgramMatrix offers a unified, self-contained platform for program managers. Plan, track, analyze, and report on every aspect of your program—from high-level strategy to detailed financials—all in one place.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center justify-center rounded-md border border-transparent bg-violet-600 px-8 py-3 text-base font-medium text-white hover:bg-violet-700 transition-colors duration-200 shadow-md hover:shadow-lg"
+                >
+                  Get Started Free
+                </Link>
+                <Link
+                  to="/features"
+                  className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-8 py-3 text-base font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200 shadow-sm"
+                >
+                  Explore Features
+                </Link>
               </div>
+              <p className="mt-6 text-sm text-gray-500">No credit card required.</p>
+            </div>
 
-              {/* Right Column - Text Content */}
-              <div className="flex flex-col justify-center">
-                <h1 className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-5xl font-bold tracking-tight text-transparent sm:text-7xl">
-                  Revolutionize Your Program Management
-                </h1>
-                <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600">
-                  Discover ProgramMatrix—the all-in-one, self-contained suite that empowers you to plan,
-                  execute, and optimize every aspect of your programs from one intuitive dashboard.
-                </p>
-                <div className="mt-10 flex flex-col items-center sm:flex-row gap-4">
-                  <button className="inline-flex h-12 items-center justify-center rounded-full bg-gray-900 px-8 text-sm font-medium text-white transition-colors hover:bg-gray-700">
-                    Get Started
-                  </button>
-                  <button className="inline-flex h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-medium text-gray-900 ring-1 ring-gray-900/10 transition-colors hover:bg-gray-50 hover:ring-gray-900/20">
-                    Watch Demo
-                  </button>
-                </div>
-              </div>
+            {/* Right Column - Dashboard Preview */}
+            <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100 p-4 transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+               {/* Mini Dashboard Header */}
+               <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-center space-x-2">
+                       <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center ring-2 ring-violet-200">
+                         <LayoutDashboard className="h-5 w-5 text-violet-600" />
+                       </div>
+                       <h2 className="text-lg font-semibold text-gray-800">Program Dashboard</h2>
+                  </div>
+                   <span className="text-xs font-medium text-gray-400 italic">Sample View</span>
+               </div>
+
+               {/* KPI Row */}
+               <div className="grid grid-cols-2 gap-4 mb-4">
+                 {kpiData.map(kpi => (
+                   <div key={kpi.id} className="bg-gray-50 rounded-lg p-3 shadow-sm border border-gray-100">
+                     <p className="text-xs font-medium text-gray-500 truncate">{kpi.name}</p>
+                     <div className="flex items-baseline justify-between mt-1">
+                       <p className="text-lg font-bold text-gray-900">{kpi.value}</p>
+                       <div className={`flex items-center text-xs font-medium ${kpi.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                         {kpi.trend === 'up' ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
+                         <span>{kpi.change}</span>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+
+               {/* Timeline & Milestones Section */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {/* Timeline */}
+                 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                     <div className="flex justify-between items-center mb-2">
+                       <h3 className="text-sm font-semibold text-gray-700">Timeline Progress</h3>
+                       <span className="text-sm font-bold text-violet-600">{programStats.timeline.percentComplete}%</span>
+                     </div>
+                     <div className="w-full bg-gray-200 rounded-full h-2.5">
+                       <div className="bg-gradient-to-r from-violet-500 to-indigo-600 h-2.5 rounded-full" style={{ width: `${programStats.timeline.percentComplete}%` }}></div>
+                     </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>{programStats.timeline.daysElapsed} Days Elapsed</span>
+                        <span>{programStats.timeline.daysRemaining} Days Remaining</span>
+                      </div>
+                 </div>
+
+                 {/* Upcoming Milestones */}
+                 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 h-full">
+                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Upcoming Milestones</h3>
+                   <div className="space-y-2">
+                     {upcomingMilestones.slice(0, 2).map((milestone) => ( // Show 2 milestones
+                       <div key={milestone.id} className="flex items-center">
+                         <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mr-2 ${
+                           milestone.status === 'on-track' ? 'bg-green-100' : 'bg-orange-100'
+                         }`}>
+                           <Calendar className={`h-3.5 w-3.5 ${
+                             milestone.status === 'on-track' ? 'text-green-600' : 'text-orange-600'
+                           }`} />
+                         </div>
+                         <div className="flex-1 text-xs">
+                           <p className="font-medium text-gray-700 truncate">{milestone.title}</p>
+                           <p className="text-gray-500">{milestone.date}</p>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
             </div>
           </div>
         </div>
       </header>
-      
-      {/* Overview Section */}
-      <section className="relative">
-        <div className="absolute inset-0 gradient-bg" />
-        <div className="relative">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-3xl text-center text-white">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Welcome to ProgramMatrix
-              </h2>
-              <p className="mt-6 text-lg leading-8 text-violet-100">
-                ProgramMatrix is built exclusively for program managers who demand a 360° view of their
-                programs. From strategic roadmapping to detailed financial oversight, risk management, and
-                beyond, manage every detail in one secure, customizable platform—no external integrations
-                required.
-              </p>
-            </div>
+
+      {/* Problem / Why ProgramMatrix Section */}
+      <section className="py-16 sm:py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Tired of Disconnected Program Data?
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Managing complex programs often means juggling spreadsheets, documents across different drives, endless email chains, and specialized tools for finance, risk, and planning. This fragmentation leads to missed insights, delayed decisions, and strategic misalignment.
+            </p>
+            <p className="mt-4 text-lg leading-8 text-gray-600 font-medium text-violet-700">
+              ProgramMatrix brings everything together, providing the single source of truth you need to lead with confidence.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Key Features Section */}
-      <section className="relative overflow-hidden py-24 sm:py-32">
-        <div className="absolute inset-0 bg-gray-50/50" />
-        <div className="relative">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Key Features</h2>
-              <p className="mt-4 text-lg text-gray-600">
-                Everything you need to manage complex programs, all in one place.
-              </p>
-            </div>
-            <div className="mx-auto mt-16 grid max-w-7xl gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <FeatureCard
-                icon={FileTextIcon}
-                title="All-in-One Data Entry & Management"
-                description="Capture every program detail—from tasks and milestones to budgets and stakeholder feedback—directly within the app."
-                benefit="Maintain a single source of truth with complete control over your data."
-              />
-              <FeatureCard
-                icon={Calendar}
-                title="Dynamic Program Roadmapping"
-                description="Build and adjust visual roadmaps that highlight key initiatives, dependencies, and timelines."
-                benefit="Stay agile and keep your team aligned with a clear, visual strategic plan."
-              />
-              <FeatureCard
-                icon={LineChart}
-                title="Scenario Planning & What-If Analysis"
-                description="Simulate various scenarios by tweaking variables like resource allocation and budget."
-                benefit="Empower data-driven decision-making to foresee challenges and seize opportunities."
-              />
-              <FeatureCard
-                icon={BarChart3Icon}
-                title="Integrated Financial Management"
-                description="Track budgets, forecast costs, and monitor actual versus planned expenditures."
-                benefit="Gain real-time insights into your program's fiscal health for better financial planning."
-              />
-              <FeatureCard
-                icon={Shield}
-                title="Risk & Opportunity Tracker"
-                description="Log potential risks and opportunities along with their estimated impact and likelihood."
-                benefit="Proactively mitigate risks and capitalize on opportunities with built-in analysis tools."
-              />
-              <FeatureCard
-                icon={UsersIcon}
-                title="Stakeholder Engagement"
-                description="Record stakeholder feedback, meeting notes, and decision logs in a centralized location."
-                benefit="Enhance transparency and ensure every voice is heard throughout the program lifecycle."
-              />
-              <FeatureCard
-                icon={LayoutDashboard}
-                title="Customizable Dashboards"
-                description="Tailor dashboards to display the KPIs and metrics that matter most to your program."
-                benefit="Turn raw data into actionable insights that drive strategic decisions."
-              />
-              <FeatureCard
-                icon={MessageSquareIcon}
-                title="Collaboration Repository"
-                description="Organize and store all program-related documents in one accessible repository."
-                benefit="Improve team collaboration by keeping every essential file at your fingertips."
-              />
-              <FeatureCard
-                icon={SettingsIcon}
-                title="Strategy Alignment"
-                description="Visualize how individual projects contribute to overarching organizational goals."
-                benefit="Ensure every initiative is aligned with your strategic vision for maximum impact."
-              />
-            </div>
+      {/* Features Section */}
+      <section id="features" className="py-16 sm:py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              One Platform, Complete Control
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore the integrated modules designed to streamline every phase of your program lifecycle.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+            <FeatureHighlight
+              icon={LayoutDashboard}
+              title="Unified Dashboard"
+              description="Get a 360° view of program health, KPIs, risks, and milestones in one customizable interface."
+            />
+            <FeatureHighlight
+              icon={Calendar}
+              title="Dynamic Roadmapping"
+              description="Visualize timelines, dependencies, and strategic initiatives. Easily adjust plans as things change."
+            />
+            <FeatureHighlight
+              icon={LineChart} /* Or PieChart */
+              title="KPI & Financial Tracking"
+              description="Monitor budget vs. actuals, track key performance indicators, and generate financial reports."
+            />
+            <FeatureHighlight
+              icon={Shield}
+              title="Risk & Scenario Planning"
+              description="Identify, assess, and mitigate risks. Simulate 'what-if' scenarios to make informed decisions."
+            />
+             <FeatureHighlight
+              icon={FileTextIcon}
+              title="Document Center"
+              description="Centralize all program-related documents. Keep everything organized and accessible."
+            />
+             <FeatureHighlight
+              icon={MessageSquareIcon} /* Or UsersIcon */
+              title="Communication & Stakeholders"
+              description="Log meeting notes, decisions, and stakeholder feedback to maintain alignment."
+            />
+            <FeatureHighlight
+              icon={Sliders} /* Or Globe2 */
+              title="Custom Insights & AI Chat"
+              description="Generate tailored reports and leverage AI assistance for data analysis and suggestions."
+            />
+             <FeatureHighlight
+              icon={SettingsIcon}
+              title="Customization & Settings"
+              description="Configure the platform to your specific program needs and organizational structure."
+            />
+             <FeatureHighlight
+              icon={UsersIcon} /* Reuse for Org Settings */
+              title="Organization & User Management"
+              description="Manage team access, roles, and permissions securely (Admin functionality)."
+            />
           </div>
         </div>
       </section>
+
+      {/* Benefits Section (How it Helps) */}
+      <section className="py-16 sm:py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Unlock Program Success
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+                ProgramMatrix empowers you to move faster, make smarter decisions, and keep everyone aligned.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div className="p-6 bg-gray-50 rounded-lg shadow-sm">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 mb-4">
+                        <Globe2 className="h-6 w-6 text-violet-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Gain Total Visibility</h3>
+                    <p className="text-gray-600">Understand program status instantly with integrated data and dashboards.</p>
+                </div>
+                <div className="p-6 bg-gray-50 rounded-lg shadow-sm">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 mb-4">
+                        <ArrowUpRight className="h-6 w-6 text-violet-600" /> {/* Or similar icon for decision */}
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Make Data-Driven Decisions</h3>
+                    <p className="text-gray-600">Leverage real-time insights, forecasts, and scenario analysis.</p>
+                </div>
+                 <div className="p-6 bg-gray-50 rounded-lg shadow-sm">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 mb-4">
+                        <UsersIcon className="h-6 w-6 text-violet-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Enhance Collaboration</h3>
+                    <p className="text-gray-600">Keep stakeholders informed and documents centralized for seamless teamwork.</p>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      {/* Social Proof Section - Temporarily Hidden */}
+      {/*
+      <section className="py-12 bg-violet-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h3 className="text-2xl font-semibold">Trusted by Leading Program Managers</h3>
+          <p className="mt-2 opacity-80">(Social proof/logos coming soon!)</p>
+        </div>
+      </section>
+      */}
 
       {/* Pricing Section */}
       <section className="relative py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-4">
-              Choose the Right Plan for Your Program Management Needs
+              Simple, Transparent Pricing
             </h2>
             <p className="text-lg text-gray-600">
-              Flexible pricing options designed to scale with your team—from individual users to enterprise-level organizations.
+              Choose the plan that fits your needs. Start free, scale as you grow.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {/* Free Plan */}
-            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-              <div className="p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Free</h3>
-                <p className="text-violet-600 font-medium mb-6">
-                  Ideal For: Individual users and small teams getting started
-                </p>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Access to all standard modules</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span>Document Upload module not available</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Limited email and community support</span>
-                  </li>
-                </ul>
-                <div className="space-y-3">
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100">
+              <div className="p-8 flex flex-col h-full">
+                 <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Free</h3>
+                    <p className="text-gray-500 mb-6">
+                      For individuals and small teams getting started.
+                    </p>
+                    <p className="text-4xl font-bold mb-6">$0</p>
+                    <ul className="space-y-3 text-sm text-gray-600 mb-8">
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Core Modules Included (Roadmap, KPI, Risk, etc.)
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Community & Email Support
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                        Excludes Document Upload Module
+                      </li>
+                       <li className="flex items-center">
+                        <svg className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                        Excludes AI Chat Features
+                      </li>
+                    </ul>
+                 </div>
+                <div className="mt-auto">
                   <Link
                     to="/signup"
-                    className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200"
+                    className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200 font-medium"
                   >
-                    Get Started
+                    Sign Up Free
                   </Link>
-                  <PayPalButton />
+                   {/* PayPal Button (Optional Placement) */}
+                   {/* <div className="mt-4"><PayPalButton /></div> */}
                 </div>
               </div>
             </div>
 
             {/* Pro Plan */}
-            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <div className="absolute top-0 right-0 bg-violet-600 text-white px-4 py-1 rounded-bl-lg text-sm font-medium">
-                Coming Soon...
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden relative border-2 border-violet-600">
+              <div className="absolute top-0 right-0 bg-violet-600 text-white px-4 py-1 rounded-bl-lg text-sm font-medium shadow">
+                Coming Soon
               </div>
-              <div className="p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Pro</h3>
-                <p className="text-violet-600 font-medium mb-6">
-                  Ideal For: Growing teams needing enhanced functionality
-                </p>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">$5</span>
-                  <span className="text-gray-600">/month</span>
+              <div className="p-8 flex flex-col h-full">
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+                    <p className="text-gray-500 mb-6">
+                      For growing teams needing full capabilities.
+                    </p>
+                    <div className="mb-6">
+                      <span className="text-4xl font-bold">$5</span>
+                      <span className="text-gray-600"> / user / month</span>
+                    </div>
+                    <ul className="space-y-3 text-sm text-gray-600 mb-8">
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Everything in Free, plus:
+                      </li>
+                       <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Document Upload Module
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        AI Chat Features
+                      </li>
+                       <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Priority Support
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Ability to Request Modules
+                      </li>
+                    </ul>
                 </div>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Everything in Free</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Document Upload module</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Priority support</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Request specific modules</span>
-                  </li>
-                </ul>
-                <Link
-                  to="/signup?plan=pro"
-                  className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg hover:bg-violet-700 transition-colors duration-200"
-                >
-                  Coming Soon...
-                </Link>
+                <div className="mt-auto">
+                    <button
+                      disabled // Disable button as it's coming soon
+                      className="block w-full bg-violet-600 text-white text-center py-3 px-4 rounded-lg font-medium cursor-not-allowed opacity-50"
+                    >
+                     Get Notified
+                    </button>
+                </div>
               </div>
             </div>
 
             {/* Executive Plan */}
-            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-              <div className="p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Executive</h3>
-                <p className="text-violet-600 font-medium mb-6">
-                  Ideal For: Enterprise-level organizations with custom needs
-                </p>
-                <ul className="space-y-4 mb-8">
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Tailored modules for your company</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Deployed in your environment</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Dedicated Admin modules</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Full white-glove support</span>
-                  </li>
-                </ul>
-                <button
-                  onClick={() => window.location.href = 'mailto:balaramakrishnasaikarumanchi0@gmail.com?subject=Executive Plan Inquiry'}
-                  className="block w-full bg-gray-900 text-white text-center py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors duration-200"
-                >
-                  Get In Touch
-                </button>
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100">
+              <div className="p-8 flex flex-col h-full">
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Executive</h3>
+                    <p className="text-gray-500 mb-6">
+                      For large organizations with custom deployment needs.
+                    </p>
+                    <p className="text-4xl font-bold mb-6">Custom</p>
+                    <ul className="space-y-3 text-sm text-gray-600 mb-8">
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Everything in Pro, plus:
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Tailored Modules & Features
+                      </li>
+                      <li className="flex items-center">
+                         <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        On-Premise or Private Cloud Deployment
+                      </li>
+                       <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        Dedicated Admin & Security Modules
+                      </li>
+                      <li className="flex items-center">
+                        <svg className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        White-Glove Onboarding & Support
+                      </li>
+                    </ul>
+                </div>
+                <div className="mt-auto">
+                    <button
+                      onClick={() => window.location.href = 'mailto:balaramakrishnasaikarumanchi0@gmail.com?subject=Executive Plan Inquiry'}
+                      className="block w-full bg-gray-800 text-white text-center py-3 px-4 rounded-lg hover:bg-gray-900 transition-colors duration-200 font-medium"
+                    >
+                      Contact Sales
+                    </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Dashboard Preview Section */}
-      <section className="relative py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Welcome to Your Dashboard
-              </h2>
-              <p className="mt-4 text-lg text-gray-600">
-                Once you log in, you'll enter a personalized workspace designed to give you a real-time,
-                comprehensive overview of your entire program.
-              </p>
-            </div>
-            <div className="mt-16">
-              <DashboardPreview />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Final CTA Section */}
+      <section className="relative bg-violet-800">
+         <div className="absolute inset-0 gradient-bg opacity-20" />
+         <div className="relative max-w-7xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8 text-center">
+           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+             Ready to Streamline Your Program Management?
+           </h2>
+           <p className="mt-6 max-w-2xl mx-auto text-lg leading-8 text-violet-100">
+             Take control of your programs with ProgramMatrix. Sign up today for free and experience the difference a unified platform can make.
+           </p>
+           <div className="mt-10">
+             <Link
+               to="/signup"
+               className="inline-flex items-center justify-center rounded-md border border-transparent bg-white px-8 py-3 text-base font-medium text-violet-700 hover:bg-gray-100 transition-colors duration-200 shadow-lg"
+             >
+               Get Started Free Now
+             </Link>
+           </div>
+         </div>
+       </section>
 
-      {/* CTA Section */}
-      <section className="relative">
-        <div className="absolute inset-0 gradient-bg" />
-        <div className="relative">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Get Started Today!
-              </h2>
-              <p className="mt-6 text-lg leading-8 text-violet-100">
-                Experience the power of holistic program management with ProgramMatrix. Whether you're
-                planning, executing, or analyzing, our platform gives you the tools you need to drive
-                success—on your terms.
-              </p>
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <button className="inline-flex h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50">
-                  Sign Up Now
-                </button>
-                <button className="inline-flex h-12 items-center justify-center rounded-full px-8 text-sm font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/10">
-                  Learn More
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-gray-900">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div>
-              <h3 className="text-lg font-semibold text-white">ProgramMatrix</h3>
-              <p className="mt-4 text-sm text-gray-400">
-                Your all-in-one solution for comprehensive program management.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-base font-semibold text-white">Features</h4>
-              <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                <li>Roadmapping</li>
-                <li>Financial Management</li>
-                <li>Risk Analysis</li>
-                <li>Stakeholder Management</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-base font-semibold text-white">Resources</h4>
-              <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                <li>Documentation</li>
-                <li>API Reference</li>
-                <li>Blog</li>
-                <li>Case Studies</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-base font-semibold text-white">Contact</h4>
-              <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2">
-                  <MessageSquareIcon className="h-6 w-6" />
-                  balaramakrishnasaikarumanchi0@gmail.com
-                </li>
-                <li className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" /> +91 94927 06718
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 border-t border-gray-800 pt-8 text-center">
-            <p className="text-sm text-gray-400">&copy; 2025 ProgramMatrix. All rights reserved.</p>
-          </div>
-        </div>
+         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+           <div className="grid gap-8 md:grid-cols-4">
+             <div>
+               <h3 className="text-lg font-semibold text-white">ProgramMatrix</h3>
+               <p className="mt-4 text-sm text-gray-400">
+                 Unified Program Management. Simplified.
+               </p>
+             </div>
+             <div>
+               <h4 className="text-base font-semibold text-white">Core Features</h4>
+               <ul className="mt-4 space-y-2 text-sm text-gray-400">
+                 <li><Link to="/features" className="hover:text-white">Dashboard</Link></li>
+                 <li><Link to="/features" className="hover:text-white">Roadmapping</Link></li>
+                 <li><Link to="/features" className="hover:text-white">Financials & KPIs</Link></li>
+                 <li><Link to="/features" className="hover:text-white">Risk Analysis</Link></li>
+                 <li><Link to="/features" className="hover:text-white">Document Center</Link></li>
+               </ul>
+             </div>
+             <div>
+               <h4 className="text-base font-semibold text-white">Resources</h4>
+               <ul className="mt-4 space-y-2 text-sm text-gray-400">
+                 <li><Link to="/documentation" className="hover:text-white">Documentation</Link></li>
+                 <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
+                 {/* Add links if Blog/Case Studies exist */}
+                 <li><span className="opacity-50">Blog (Coming Soon)</span></li>
+                 <li><span className="opacity-50">Case Studies (Coming Soon)</span></li>
+               </ul>
+             </div>
+             <div>
+               <h4 className="text-base font-semibold text-white">Contact</h4>
+               <ul className="mt-4 space-y-2 text-sm text-gray-400">
+                 <li className="flex items-center gap-2">
+                   <MessageSquareIcon className="h-4 w-4" />
+                   <a href="mailto:balaramakrishnasaikarumanchi0@gmail.com" className="hover:text-white">Email Support</a>
+                 </li>
+                 {/* <li className="flex items-center gap-2">
+                   <Phone className="h-4 w-4" /> +91 94927 06718
+                 </li> */}
+               </ul>
+             </div>
+           </div>
+           <div className="mt-8 border-t border-gray-800 pt-8 text-center">
+             <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} ProgramMatrix. All rights reserved.</p>
+           </div>
+         </div>
       </footer>
-      
+
     </div>
   );
 }
@@ -697,6 +671,7 @@ function App() {
           <Route path="/" element={<><Navbar /><HomePage /></>} />
           <Route path="/login" element={<><Navbar /><Login /></>} />
           <Route path="/signup" element={<><Navbar /><Signup /></>} />
+          <Route path="/features" element={<Features />} />
           <Route
             path="/admin/verification"
             element={

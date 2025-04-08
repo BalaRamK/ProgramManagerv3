@@ -15,6 +15,7 @@ import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
 import Documentation from './pages/Documentation';
 import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
+import { Pricing } from './pages/Pricing'; // Add this import
 import { supabase } from './lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { Toaster } from 'react-hot-toast';
@@ -628,6 +629,7 @@ function App() {
           <Route path="/login" element={<><Navbar /><Login /></>} />
           <Route path="/signup" element={<><Navbar /><Signup /></>} />
           <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<><Navbar /><Pricing /></>} />
           <Route
             path="/admin/verification"
             element={

@@ -87,21 +87,122 @@
 .contentDisplay {
   font-size: 16px;
   line-height: 1.6;
+  color: #1a1a1a;
 }
 
-/* Ensure bullets and numbered lists appear correctly in the display view */
-.contentDisplay :global(ul) {
-  list-style-type: disc !important;
-  margin-left: 1.5em !important;
-  padding-left: 0 !important;
+.contentDisplay h1 {
+  font-size: 2.5em;
+  font-weight: bold;
+  margin-bottom: 1em;
+  color: #1a1a1a;
 }
 
-.contentDisplay :global(ol) {
-  list-style-type: decimal !important;
-  margin-left: 1.5em !important;
-  padding-left: 0 !important;
+.contentDisplay h2 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  color: #2a2a2a;
 }
 
-.contentDisplay :global(li) {
-  display: list-item !important;
+.contentDisplay h3 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  color: #2a2a2a;
+}
+
+.contentDisplay p {
+  margin-bottom: 1em;
+  line-height: 1.7;
+}
+
+.contentDisplay ul {
+  list-style-type: disc;
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+  padding-left: 0;
+}
+
+.contentDisplay ol {
+  list-style-type: decimal;
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+  padding-left: 0;
+}
+
+.contentDisplay li {
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+}
+
+.contentDisplay strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.contentDisplay code {
+  background-color: #f5f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.contentDisplay pre {
+  background-color: #f5f5f5;
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.contentDisplay blockquote {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-bottom: 1em;
+  color: #4a5568;
+}
+
+.contentDisplay a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.contentDisplay a:hover {
+  text-decoration: underline;
+}
+
+/* Ensure proper spacing between elements */
+.contentDisplay > * + * {
+  margin-top: 1em;
+}
+
+/* Table styling */
+.contentDisplay table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.contentDisplay th,
+.contentDisplay td {
+  border: 1px solid #e2e8f0;
+  padding: 0.75em;
+  text-align: left;
+}
+
+.contentDisplay th {
+  background-color: #f8fafc;
+  font-weight: 600;
+}
+
+/* Image styling */
+.contentDisplay img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 5px;
+  margin: 1em 0;
 } 

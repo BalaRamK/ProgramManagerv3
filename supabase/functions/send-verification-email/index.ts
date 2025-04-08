@@ -2,18 +2,21 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400', // 24 hours
+  'Access-Control-Allow-Origin': '*',  // More permissive during development
+  'Access-Control-Allow-Headers': '*',  // Allow all headers during development
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // This is a preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders,
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+      }
     })
   }
 
@@ -44,7 +47,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ message: 'Verification email sent successfully' }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+        },
         status: 200,
       }
     )
@@ -52,7 +59,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: error.message }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+        },
         status: 400,
       }
     )

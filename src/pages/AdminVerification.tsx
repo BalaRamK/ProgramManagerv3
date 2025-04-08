@@ -1,17 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { 
-  Users, 
-  Shield, 
-  Activity, 
-  Database, 
-  Trash2, 
-  CheckCircle2, 
-  XCircle,
-  RefreshCw,
-  AlertCircle
-} from 'lucide-react';
+import { LayoutDashboard, Users, Check, X, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Navbar } from '../components/Navbar';
 
 const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
 
@@ -21,742 +14,270 @@ interface PendingUser {
   name: string;
   status: string;
   created_at: string;
-  role: 'free' | 'pro' | 'executive';
-  modules: string[];
-  storage_used: number;
-  storage_limit: number;
 }
-
-interface UserLog {
-  id: string;
-  user_id: string;
-  action: string;
-  details: string;
-  created_at: string;
-}
-
-const AVAILABLE_MODULES = [
-  { id: 'roadmap', name: 'Roadmap & Milestones' },
-  { id: 'kpi', name: 'KPI & Financials' },
-  { id: 'scenario', name: 'Scenario Planning' },
-  { id: 'communication', name: 'Communication Hub' },
-  { id: 'documents', name: 'Document Center' },
-  { id: 'insights', name: 'Custom Insights' }
-];
-
-const ROLE_LIMITS = {
-  free: {
-    storage: 100 * 1024 * 1024, // 100MB
-    modules: ['roadmap', 'kpi']
-  },
-  pro: {
-    storage: 1 * 1024 * 1024 * 1024, // 1GB
-    modules: ['roadmap', 'kpi', 'scenario', 'communication']
-  },
-  executive: {
-    storage: 5 * 1024 * 1024 * 1024, // 5GB
-    modules: AVAILABLE_MODULES.map(m => m.id)
-  }
-};
 
 export function AdminVerification() {
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const [activeUsers, setActiveUsers] = useState<PendingUser[]>([]);
-  const [userLogs, setUserLogs] = useState<UserLog[]>([]);
+  const [users, setUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'logs'>('pending');
-  const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('AdminVerification component mounted');
     checkAdminAccess();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'logs') {
-      fetchUserLogs();
-    }
-  }, [activeTab]);
-
   const checkAdminAccess = async () => {
     try {
-      console.log('Checking admin access...');
-      setError(null);
-      setDebugInfo(null);
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('Error getting user:', userError);
-        setError('Authentication error');
-        setDebugInfo(JSON.stringify(userError, null, 2));
+      if (!user || user.email !== ADMIN_EMAIL) {
+        console.log('Admin access denied or no user logged in.');
         navigate('/');
         return;
       }
 
-      if (!user) {
-        console.log('No user found');
-        setError('No authenticated user found');
-        navigate('/');
-        return;
-      }
-
-      if (user.email !== ADMIN_EMAIL) {
-        console.log('Access denied. User:', user.email);
-        setError(`Access denied. You must be logged in as ${ADMIN_EMAIL}`);
-        navigate('/');
-        return;
-      }
-
-      console.log('Admin access granted for:', user.email);
-      setDebugInfo(`Authenticated as: ${user.email}`);
-      fetchPendingUsers();
-      fetchActiveUsers();
+      await fetchUsers();
     } catch (err) {
-      console.error('Error in checkAdminAccess:', err);
-      setError('Error checking admin access');
-      setDebugInfo(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error checking admin access:', err);
+      setError('Failed to verify admin access. Please login again.');
       navigate('/');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchPendingUsers = async () => {
+  const fetchUsers = async () => {
     try {
-      setLoading(true);
       setError(null);
-      
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('pending_users')
-        .select('*')
-        .eq('status', 'pending_admin_approval');
+        .select('id, email, name, status, created_at')
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
-
-      setPendingUsers(data || []);
+      if (fetchError) throw fetchError;
+      setUsers(data || []);
     } catch (err) {
-      console.error('Failed to fetch pending users:', err);
-      setError('Failed to fetch pending users');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching users:', err);
+      setError('Failed to fetch users. Please try refreshing.');
     }
   };
 
-  const fetchActiveUsers = async () => {
+  const handleAction = async (userId: string, email: string, action: 'approve' | 'reject' | 'delete') => {
+    setActionLoading(prev => ({ ...prev, [userId + action]: true }));
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const { data, error } = await supabase
-        .from('pending_users')
-        .select('*')
-        .neq('status', 'pending_admin_approval')
-        .neq('status', 'rejected');
-
-      if (error) {
-        throw error;
+      if (!session) {
+        throw new Error('No active session. Please login again.');
       }
 
-      setActiveUsers(data || []);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase URL or Anon Key is missing in environment variables.');
+      }
+
+      const functionUrl = `${supabaseUrl}/functions/v1/admin-user-management`;
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({ action, userId, email })
+      });
+
+      if (!response.ok) {
+        let errorData = { error: `Action failed with status: ${response.status}` };
+        try {
+          errorData = await response.json(); 
+        } catch (e) {
+          console.warn("Could not parse error response as JSON");
+        }
+        console.error("Function returned error:", errorData);
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Function success result:", result);
+
+      await fetchUsers();
+
     } catch (err) {
-      console.error('Failed to fetch active users:', err);
-      setError('Failed to fetch active users');
+      console.error(`Failed to ${action} user:`, err);
+      setError(`Failed to ${action} user: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
-      setLoading(false);
+      setActionLoading(prev => ({ ...prev, [userId + action]: false }));
     }
-  };
-
-  const fetchUserLogs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, error } = await supabase
-        .from('user_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) {
-        throw error;
-      }
-
-      setUserLogs(data || []);
-    } catch (err) {
-      console.error('Failed to fetch user logs:', err);
-      setError('Failed to fetch user logs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logAction = async (userId: string, action: string, details: string) => {
-    try {
-      // Get the user's email from pending_users
-      const { data: userData, error: userError } = await supabase
-        .from('pending_users')
-        .select('email')
-        .eq('id', userId)
-        .single();
-
-      if (userError || !userData?.email) {
-        console.error('Failed to get user email:', userError);
-        return false;
-      }
-
-      // Get the user's ID from auth.users using a direct query
-      const { data: authData, error: authError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', userData.email)
-        .single();
-
-      if (authError || !authData?.id) {
-        console.error('Failed to get auth user ID:', authError);
-        return false;
-      }
-
-      // Log the action using the auth user ID
-      const { error: logError } = await supabase
-        .from('user_logs')
-        .insert([{
-          user_id: authData.id,
-          action: action,
-          details: details
-        }]);
-
-      if (logError) {
-        console.error('Failed to log action:', logError);
-        return false;
-      }
-      return true;
-    } catch (err) {
-      console.error('Error logging action:', err);
-      return false;
-    }
-  };
-
-  const handleApprove = async (user: PendingUser) => {
-    try {
-      setLoading(true);
-      
-      // 1. Update pending_users status
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({ 
-          status: 'approved',
-          role: 'free',
-          modules: ['roadmap', 'kpi', 'scenario', 'communication', 'documents', 'insights'],
-          storage_limit: 100 * 1024 * 1024 // 100MB for free tier
-        })
-        .eq('email', user.email);
-
-      if (updateError) throw updateError;
-
-      // 2. Send verification email
-      const { error: emailError } = await supabase
-        .functions.invoke('send-verification-email', {
-          body: { userEmail: user.email }
-        });
-
-      if (emailError) throw emailError;
-
-      // 3. Log the action
-      await logAction(user.id, 'user_approved', `User ${user.email} approved`);
-
-      await fetchPendingUsers();
-    } catch (err) {
-      console.error('Failed to approve user:', err);
-      setError('Failed to approve user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReject = async (user: PendingUser) => {
-    try {
-      setLoading(true);
-      
-      // Update user status in pending_users
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({ status: 'rejected' })
-        .eq('id', user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Delete user from auth.users
-      const { error: deleteAuthError } = await supabase
-        .functions.invoke('delete-auth-user', {
-          body: { userEmail: user.email }
-        });
-
-      if (deleteAuthError) {
-        throw deleteAuthError;
-      }
-
-      // Send rejection email
-      const { error: emailError } = await supabase
-        .functions.invoke('send-rejection-email', {
-          body: { userEmail: user.email }
-        });
-
-      if (emailError) {
-        throw emailError;
-      }
-
-      // Log the action
-      await logAction(user.id, 'user_rejected', `User ${user.email} rejected and deleted from auth`);
-
-      await fetchPendingUsers();
-    } catch (err) {
-      console.error('Failed to reject user:', err);
-      setError('Failed to reject user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateUserRole = async (user: PendingUser, newRole: 'free' | 'pro' | 'executive') => {
-    try {
-      setLoading(true);
-      
-      // Update user role in pending_users
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({ 
-          role: newRole,
-          storage_limit: ROLE_LIMITS[newRole].storage
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Log the action
-      await logAction(user.id, 'role_updated', `User ${user.email} role updated to ${newRole}`);
-
-      await fetchActiveUsers();
-    } catch (err) {
-      console.error('Failed to update user role:', err);
-      setError('Failed to update user role');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateUserModules = async (user: PendingUser, newModules: string[]) => {
-    try {
-      setLoading(true);
-      
-      // Update user modules in pending_users
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({ modules: newModules })
-        .eq('id', user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Log the action
-      await logAction(user.id, 'modules_updated', `User ${user.email} modules updated to: ${newModules.join(', ')}`);
-
-      await fetchActiveUsers();
-    } catch (err) {
-      console.error('Failed to update user modules:', err);
-      setError('Failed to update user modules');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteUser = async (user: PendingUser) => {
-    try {
-      setLoading(true);
-      
-      // Delete user from auth.users
-      const { error: deleteAuthError } = await supabase
-        .functions.invoke('delete-auth-user', {
-          body: { userEmail: user.email }
-        });
-
-      if (deleteAuthError) {
-        throw deleteAuthError;
-      }
-
-      // Delete user from pending_users
-      const { error: deleteError } = await supabase
-        .from('pending_users')
-        .delete()
-        .eq('id', user.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      // Log the action
-      await logAction(user.id, 'user_deleted', `User ${user.email} deleted`);
-
-      await fetchActiveUsers();
-      setIsDetailsOpen(false);
-      setSelectedUser(null);
-    } catch (err) {
-      console.error('Failed to delete user:', err);
-      setError('Failed to delete user');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatStorage = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-violet-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Loading Admin Panel...</p>
+        </div>
       </div>
     );
   }
 
+  const pendingUsers = users.filter(u => u.status === 'pending_admin_approval');
+  const managedUsers = users.filter(u => u.status !== 'pending_admin_approval');
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-              <p className="mt-1 text-sm text-gray-500">Manage user access and permissions</p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  fetchPendingUsers();
-                  fetchActiveUsers();
-                  fetchUserLogs();
-                }}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </button>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <Navbar />
+      <div className="p-8 mt-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Verification</h1>
+        <p className="text-gray-600 text-lg mb-8">Manage user sign-up requests and existing users.</p>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg flex items-center">
+            <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+            <span>{error}</span>
+            <button onClick={() => setError(null)} aria-label="Close" className="ml-auto text-red-700 hover:text-red-900">
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          
-          {error && (
-            <div className="px-4 py-3 bg-red-50">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-red-400" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                  {debugInfo && (
-                    <pre className="mt-2 text-xs text-red-800 bg-red-100 p-2 rounded overflow-auto">
-                      {debugInfo}
-                    </pre>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+        )}
 
-          {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              <button
-                onClick={() => setActiveTab('pending')}
-                className={`${
-                  activeTab === 'pending'
-                    ? 'border-violet-500 text-violet-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-              >
-                Pending Users
-              </button>
-              <button
-                onClick={() => setActiveTab('active')}
-                className={`${
-                  activeTab === 'active'
-                    ? 'border-violet-500 text-violet-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-              >
-                Active Users
-              </button>
-              <button
-                onClick={() => setActiveTab('logs')}
-                className={`${
-                  activeTab === 'logs'
-                    ? 'border-violet-500 text-violet-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-              >
-                System Logs
-              </button>
-            </nav>
-          </div>
-
-          {/* Content */}
-          <div className="divide-y divide-gray-200">
-            {activeTab === 'pending' && (
-              <div className="px-4 py-5 sm:px-6">
-                {pendingUsers.length === 0 ? (
-                  <div className="text-center text-gray-500">No pending requests</div>
-                ) : (
-                  <ul className="divide-y divide-gray-200">
-                    {pendingUsers.map((user) => (
-                      <li key={user.id} className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                            <p className="text-sm text-gray-500">
-                              Requested: {new Date(user.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex space-x-3">
-                            <button
-                              onClick={() => handleApprove(user)}
-                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                            >
-                              <CheckCircle2 className="h-4 w-4 mr-1" />
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleReject(user)}
-                              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'active' && (
-              <div className="px-4 py-5 sm:px-6">
-                {activeUsers.length === 0 ? (
-                  <div className="text-center text-gray-500">No active users</div>
-                ) : (
-                  <ul className="divide-y divide-gray-200">
-                    {activeUsers.map((user) => (
-                      <li key={user.id} className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center">
-                              <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                              <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                user.role === 'executive' ? 'bg-purple-100 text-purple-800' :
-                                user.role === 'pro' ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-500">Storage: {formatStorage(user.storage_used)} / {formatStorage(user.storage_limit)}</p>
-                              <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-violet-500" 
-                                  style={{ width: `${(user.storage_used / user.storage_limit) * 100}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-4">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setIsDetailsOpen(true);
-                              }}
-                              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-                            >
-                              <Activity className="h-4 w-4 mr-1" />
-                              Details
-                            </button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'logs' && (
-              <div className="px-4 py-5 sm:px-6">
-                {userLogs.length === 0 ? (
-                  <div className="text-center text-gray-500">No logs available</div>
-                ) : (
-                  <ul className="divide-y divide-gray-200">
-                    {userLogs.map((log) => (
-                      <li key={log.id} className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{log.action}</p>
-                            <p className="text-sm text-gray-500">{log.details}</p>
-                            <p className="text-xs text-gray-400">
-                              {new Date(log.created_at).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* User Details Slide-over */}
-      {selectedUser && (
-        <div className={`fixed inset-0 overflow-hidden ${isDetailsOpen ? 'block' : 'hidden'}`}>
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsDetailsOpen(false)} />
-            
-            <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
-              <div className="w-screen max-w-2xl">
-                <div className="h-full flex flex-col bg-white shadow-xl">
-                  <div className="flex-1 py-6 overflow-y-auto px-4 sm:px-6">
-                    <div className="flex items-start justify-between">
-                      <h2 className="text-lg font-medium text-gray-900">User Details</h2>
-                      <div className="ml-3 h-7 flex items-center">
-                        <button
-                          onClick={() => setIsDetailsOpen(false)}
-                          className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        >
-                          <span className="sr-only">Close panel</span>
-                          <XCircle className="h-6 w-6" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-6">
-                      <div className="space-y-6">
-                        {/* User Info */}
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-500">User Information</h3>
-                          <div className="mt-2">
-                            <p className="text-sm text-gray-900">Email: {selectedUser.email}</p>
-                            <p className="text-sm text-gray-900">Role: {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}</p>
-                            <p className="text-sm text-gray-900">Storage: {formatStorage(selectedUser.storage_used)} / {formatStorage(selectedUser.storage_limit)}</p>
-                          </div>
-                        </div>
-
-                        {/* Storage Usage */}
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-500">Storage Usage</h3>
-                          <div className="mt-2">
-                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-violet-500" 
-                                style={{ width: `${(selectedUser.storage_used / selectedUser.storage_limit) * 100}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Module Access */}
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-500">Module Access</h3>
-                          <div className="mt-2 space-y-2">
-                            {AVAILABLE_MODULES.map(module => (
-                              <label key={module.id} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedUser.modules.includes(module.id)}
-                                  onChange={(e) => {
-                                    const newModules = e.target.checked
-                                      ? [...selectedUser.modules, module.id]
-                                      : selectedUser.modules.filter(m => m !== module.id);
-                                    handleUpdateUserModules(selectedUser, newModules);
-                                  }}
-                                  className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
-                                />
-                                <span className="ml-2 text-sm text-gray-900">{module.name}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Role Management */}
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-500">Role Management</h3>
-                          <div className="mt-2 space-y-2">
-                            <button
-                              onClick={() => handleUpdateUserRole(selectedUser, 'free')}
-                              className={`w-full text-left px-3 py-2 text-sm rounded-md ${
-                                selectedUser.role === 'free'
-                                  ? 'bg-violet-100 text-violet-700'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              Free
-                            </button>
-                            <button
-                              onClick={() => handleUpdateUserRole(selectedUser, 'pro')}
-                              className={`w-full text-left px-3 py-2 text-sm rounded-md ${
-                                selectedUser.role === 'pro'
-                                  ? 'bg-violet-100 text-violet-700'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              Pro
-                            </button>
-                            <button
-                              onClick={() => handleUpdateUserRole(selectedUser, 'executive')}
-                              className={`w-full text-left px-3 py-2 text-sm rounded-md ${
-                                selectedUser.role === 'executive'
-                                  ? 'bg-violet-100 text-violet-700'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              Executive
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Delete User */}
-                        <div className="pt-4 border-t border-gray-200">
-                          <button
-                            onClick={() => handleDeleteUser(selectedUser)}
-                            className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        <Card className="mb-8 border border-gray-100 shadow-sm rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+              <Users className="h-5 w-5 mr-2 text-violet-600" />
+              Pending Approval ({pendingUsers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested On</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {pendingUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">No users pending approval.</td>
+                    </tr>
+                  ) : (
+                    pendingUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleAction(user.id, user.email, 'approve')}
+                            disabled={actionLoading[user.id + 'approve']}
+                            className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete User
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                            {actionLoading[user.id + 'approve'] ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-1" />
+                            )}
+                            Approve
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleAction(user.id, user.email, 'reject')}
+                            disabled={actionLoading[user.id + 'reject']}
+                            className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            {actionLoading[user.id + 'reject'] ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4 mr-1" />
+                            )}
+                            Reject
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
-      )}
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-100 shadow-sm rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+              <LayoutDashboard className="h-5 w-5 mr-2 text-violet-600" />
+              Managed Users ({managedUsers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {managedUsers.length === 0 ? (
+                     <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">No approved or rejected users found.</td>
+                    </tr>
+                  ) : (
+                    managedUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                            user.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' 
+                          }`}>
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                          <Button 
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to permanently delete user ${user.email}? This action cannot be undone.`)) {
+                                handleAction(user.id, user.email, 'delete')
+                              }
+                            }}
+                            disabled={actionLoading[user.id + 'delete']}
+                          >
+                             {actionLoading[user.id + 'delete'] ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-1" />
+                            )}
+                            Delete User
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
-} 
+}

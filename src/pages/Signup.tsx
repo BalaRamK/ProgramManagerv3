@@ -67,20 +67,25 @@ export function Signup() {
         throw new Error('Failed to create user');
       }
 
-      // 2. Create the pending_users record using the database function
-      const { data: pendingData, error: pendingError } = await supabase
-        .rpc('create_pending_user', {
-          user_email: email,
-          user_name: name,
-          user_id: signUpData.user.id
-        });
+      // Capture the correct ID from the auth user
+      const authUserId = signUpData.user.id;
+
+      // 2. Create the pending_users record with the correct ID
+      const { error: pendingError } = await supabase
+        .from('pending_users')
+        .insert([
+          {
+            id: authUserId, // Include the auth user ID
+            email,
+            name,
+            status: 'pending_admin_approval'
+          }
+        ])
+        .select()
+        .single();
 
       if (pendingError) {
         throw pendingError;
-      }
-
-      if (!pendingData?.success) {
-        throw new Error(pendingData?.message || 'Failed to create pending user');
       }
 
       setSuccess(true);

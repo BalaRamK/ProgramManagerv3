@@ -11,11 +11,11 @@ import AIChat from './pages/AIChat';
 import CommunicationLog from './pages/CommunicationLog';
 import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
-import CustomInsights from './pages/CustomInsights'; // Import CustomInsights
+import CustomInsights from './pages/CustomInsights';
 import Documentation from './pages/Documentation';
 import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
-import { Pricing } from './pages/Pricing'; // Add this import
+import { Pricing } from './pages/Pricing';
 import { supabase } from './lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { Toaster } from 'react-hot-toast';
@@ -38,7 +38,10 @@ import {
 } from 'lucide-react';
 import { OrganizationUserSettings } from './pages/OrganizationUserSettings';
 import NavNotificationBar from './components/NavNotificationBar';
-import { Features } from './pages/Features'; // Import the new Features page
+import { Features } from './pages/Features';
+import { NotificationProvider } from './context/NotificationContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 interface FeatureProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -535,8 +538,8 @@ function HomePage() {
                  <li><Link to="/documentation" className="hover:text-white">Documentation</Link></li>
                  <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
                  {/* Add links if Blog/Case Studies exist */}
-                 <li><span className="opacity-50">Blog (Coming Soon)</span></li>
-                 <li><span className="opacity-50">Case Studies (Coming Soon)</span></li>
+                 <li><span className="opacity-50">Blog & Case Studies (Coming Soon)</span></li>
+                 <li><span className="opacity-50">Community (Coming Soon)</span></li>
                </ul>
              </div>
              <div>
@@ -562,173 +565,123 @@ function HomePage() {
   );
 }
 
-function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user as User | null);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-700 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return user ? children : <Navigate to="/login" />;
-}
-
-const ADMIN_EMAIL = 'balaramakrishnasaikarumanchi0@gmail.com';
-
-interface AdminRouteProps {
-  children: React.ReactNode;
-}
-
-function AdminRoute({ children }: AdminRouteProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
-      </div>
-    );
-  }
-
-  return user?.email === ADMIN_EMAIL ? children : <Navigate to="/" />;
-}
-
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <NavNotificationBar />
-        <Toaster position="top-right"/>
-        <Routes>
-          <Route path="/" element={<><Navbar /><HomePage /></>} />
-          <Route path="/login" element={<><Navbar /><Login /></>} />
-          <Route path="/signup" element={<><Navbar /><Signup /></>} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/pricing" element={<><Navbar /><Pricing /></>} />
-          <Route
-            path="/admin/verification"
-            element={
-              <AdminRoute>
-                <Navbar />
-                <AdminVerification />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/dashboard/*"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/roadmap"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <Roadmap />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/kpi"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <KpiFinancial />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/scenario-planning"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <RiskAnalysis />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ai-chat"
-            element={
-              <ProtectedRoute>
-                <AIChat />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/communication-log"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <CommunicationLog />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/document-center"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <DocumentCenter />
-              </ProtectedRoute>
-            }
-          />
-           <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <OrganizationUserSettings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/custom-insights"
-            element={
-              <ProtectedRoute>
-                <Navbar />
-                <CustomInsights />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/documentation"
-            element={
-              <ProtectedRoute>
-                <Documentation />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </div>
-    </Router>
+    <NotificationProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          <NavNotificationBar />
+          <Toaster position="top-right"/>
+          <Routes>
+            <Route path="/" element={<><Navbar /><HomePage /></>} />
+            <Route path="/login" element={<><Navbar /><Login /></>} />
+            <Route path="/signup" element={<><Navbar /><Signup /></>} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/pricing" element={<><Navbar /><Pricing /></>} />
+            <Route
+              path="/admin/verification"
+              element={
+                <AdminRoute>
+                  <Navbar />
+                  <AdminVerification />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/dashboard/*"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roadmap"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Roadmap />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/kpi"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <KpiFinancial />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/scenario-planning"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <RiskAnalysis />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-chat"
+              element={
+                <ProtectedRoute>
+                  <AIChat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/communication-log"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <CommunicationLog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/document-center"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <DocumentCenter />
+                </ProtectedRoute>
+              }
+            />
+             <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <OrganizationUserSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/custom-insights"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <CustomInsights />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documentation"
+              element={
+                <ProtectedRoute>
+                  <Documentation />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </div>
+      </Router>
+    </NotificationProvider>
   );
 }
 

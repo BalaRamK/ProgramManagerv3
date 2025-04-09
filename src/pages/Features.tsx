@@ -408,44 +408,95 @@ const AIIllustration = ({ className }: { className?: string }) => (
   </div>
 );
 
-const SettingsIllustration = ({ className }: { className?: string }) => (
-  <div className={`bg-gradient-to-br from-violet-50 to-indigo-50 rounded-lg p-6 ${className} relative`}>
-    {/* Coming Soon Overlay */}
-    <div className="absolute inset-0 bg-gray-500 bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-      <span className="bg-violet-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">Coming Soon</span>
-    </div>
+const CustomInsightsIllustration = ({ className }: { className?: string }) => (
+  <div className={`bg-gradient-to-br from-violet-50 to-indigo-50 rounded-lg p-6 ${className}`}>
+    <div className="space-y-4">
+      {/* Report Builder Panel */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-5 bg-violet-200 rounded text-xs text-violet-600 px-3 py-1 font-medium">Report Builder</div>
+          <div className="h-5 bg-purple-100 rounded text-xs text-purple-600 px-3 py-1">Single Report</div>
+        </div>
+        <div className="space-y-3">
+          {/* Data Sources */}
+          <div className="bg-violet-50/50 p-2 rounded-lg">
+            <div className="text-xs text-violet-700 mb-1 font-medium">Data Sources</div>
+            <div className="flex gap-2">
+              <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">KPIs</div>
+              <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">Financial</div>
+            </div>
+          </div>
+          {/* Metrics */}
+          <div className="bg-violet-50/50 p-2 rounded-lg">
+            <div className="text-xs text-violet-700 mb-1 font-medium">Metrics</div>
+            <div className="flex gap-2">
+              <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">Budget Utilization</div>
+              <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">Timeline Progress</div>
+            </div>
+          </div>
+          {/* Date Range */}
+          <div className="bg-violet-50/50 p-2 rounded-lg">
+            <div className="text-xs text-violet-700 mb-1 font-medium">Date Range</div>
+            <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600 w-fit">Last 30 Days</div>
+          </div>
+        </div>
+      </div>
 
-    <div className="grid grid-cols-2 gap-4 opacity-50"> {/* Lower opacity for background */}
-      {/* User Profile */}
-      <div className="col-span-2 bg-white p-4 rounded-lg shadow-sm border border-violet-100">
-        <div className="h-4 w-24 bg-violet-200 rounded mb-3 text-xs text-violet-600 px-1">User Profile</div>
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <div className="h-6 w-20 bg-violet-100 rounded mr-2 text-xs px-1 text-violet-600">Name:</div>
-            <div className="h-6 flex-1 bg-violet-50 rounded text-xs px-1 text-violet-700">John Doe</div>
+      {/* Chart Preview */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-5 bg-violet-200 rounded text-xs text-violet-600 px-3 py-1 font-medium">Report Preview</div>
+          <div className="flex gap-2">
+            <div className="h-6 w-6 bg-violet-100 rounded p-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-violet-500">
+                <path d="M3 16h18M3 8h18" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="h-6 w-6 bg-violet-100 rounded p-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-violet-500">
+                <path d="M3 12l5-5 5 5 5-5 3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
-          <div className="flex items-center">
-            <div className="h-6 w-20 bg-violet-100 rounded mr-2 text-xs px-1 text-violet-600">Email:</div>
-            <div className="h-6 flex-1 bg-violet-50 rounded text-xs px-1 text-violet-700">john@example.com</div>
+        </div>
+        {/* Chart Area */}
+        <div className="h-32 relative">
+          <div className="absolute bottom-0 left-0 right-0 flex justify-around items-end h-full">
+            {[60, 80, 50, 70, 90, 65].map((h, i) => (
+              <div key={i} className="w-8 bg-violet-400 rounded-t transition-all hover:bg-violet-500" style={{ height: `${h}%` }}></div>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+          <div className="text-xs text-gray-500">Last updated: Just now</div>
+          <div className="flex gap-2">
+            <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">Export</div>
+            <div className="px-2 py-1 bg-violet-100 rounded text-xs text-violet-600">Share</div>
           </div>
         </div>
       </div>
-      {/* Preferences */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
-        <div className="h-4 w-20 bg-violet-200 rounded mb-3 text-xs text-violet-600 px-1">Preferences</div>
-        <div className="space-y-2">
-          <div className="h-6 w-full bg-violet-100 rounded text-xs px-1 text-violet-700">Notifications: ON</div>
-          <div className="h-6 w-full bg-violet-100 rounded text-xs px-1 text-violet-700">Layout: Grid</div>
+
+      {/* Batch Reports */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-violet-100">
+          <div className="text-xs text-violet-700 font-medium mb-2">Report 1</div>
+          <div className="space-y-1">
+            <div className="h-2 w-3/4 bg-violet-200 rounded"></div>
+            <div className="h-2 w-1/2 bg-violet-200 rounded"></div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <div className="px-2 py-0.5 bg-emerald-100 rounded text-xs text-emerald-600">Complete</div>
+          </div>
         </div>
-      </div>
-      {/* Modules */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
-        <div className="h-4 w-24 bg-violet-200 rounded mb-3 text-xs text-violet-600 px-1">Active Modules</div>
-        <div className="grid grid-cols-2 gap-1">
-          <div className="h-5 w-full bg-violet-100 rounded text-[10px] px-1 text-violet-700">Roadmap</div>
-          <div className="h-5 w-full bg-violet-100 rounded text-[10px] px-1 text-violet-700">Financials</div>
-          <div className="h-5 w-full bg-violet-100 rounded text-[10px] px-1 text-violet-700">Risk Analysis</div>
-          <div className="h-5 w-full bg-violet-100 rounded text-[10px] px-1 text-violet-700">AI Chat</div>
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-violet-100">
+          <div className="text-xs text-violet-700 font-medium mb-2">Report 2</div>
+          <div className="space-y-1">
+            <div className="h-2 w-2/3 bg-violet-200 rounded"></div>
+            <div className="h-2 w-1/3 bg-violet-200 rounded"></div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <div className="px-2 py-0.5 bg-amber-100 rounded text-xs text-amber-600">Generating</div>
+          </div>
         </div>
       </div>
     </div>
@@ -454,34 +505,75 @@ const SettingsIllustration = ({ className }: { className?: string }) => (
 
 const OrgManagementIllustration = ({ className }: { className?: string }) => (
   <div className={`bg-gradient-to-br from-violet-50 to-indigo-50 rounded-lg p-6 ${className}`}>
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* User List */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
-        <div className="h-4 w-32 bg-violet-200 rounded mb-3 text-xs text-violet-600 px-1">Team Members</div>
-        <div className="space-y-2">
-          {[ { name: 'Alice B.', role: 'Admin' }, { name: 'Bob J.', role: 'Editor'}, { name: 'Charlie K.', role: 'Viewer'} ].map((user, i) => (
-            <div key={i} className="flex items-center">
-              <div className="h-8 w-8 bg-violet-100 rounded-full mr-2"></div>
-              <div className="flex-grow">
-                <div className="h-3 w-16 bg-violet-200 rounded mb-0.5 text-[10px] px-1 text-violet-700">{user.name}</div>
-                <div className="h-2 w-12 bg-violet-100 rounded text-[9px] px-1 text-violet-500">{user.role}</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-5 bg-violet-200 rounded text-xs text-violet-600 px-3 py-1 font-medium">Team Members</div>
+          <div className="h-5 bg-violet-100 rounded text-xs text-violet-600 px-3 py-1">Total: 8</div>
+        </div>
+        <div className="space-y-3">
+          {[
+            { name: 'Alice B.', role: 'Admin', status: 'Active' },
+            { name: 'Bob J.', role: 'Editor', status: 'Active' },
+            { name: 'Charlie K.', role: 'Viewer', status: 'Away' }
+          ].map((user, i) => (
+            <div key={i} className="flex items-center bg-violet-50/50 p-2 rounded-lg">
+              <div className="h-8 w-8 bg-violet-200 rounded-full mr-3 flex items-center justify-center text-violet-600 text-xs font-medium">
+                {user.name.charAt(0)}
               </div>
-              <div className="ml-auto">
-                <div className="h-5 w-16 bg-violet-100 rounded text-[10px] px-1 text-violet-600">Manage</div>
+              <div className="flex-grow">
+                <div className="text-sm font-medium text-violet-900">{user.name}</div>
+                <div className="text-xs text-violet-600">{user.role}</div>
+              </div>
+              <div className="ml-2">
+                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                  user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {user.status}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
-      {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-violet-100 text-center">
-          <div className="h-3 w-16 bg-violet-200 rounded mb-1 text-[10px] px-1 text-violet-600 mx-auto">Invite User</div>
-          <div className="h-6 w-full bg-violet-100 rounded"></div>
+
+      {/* Roles & Permissions */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
+          <div className="h-5 bg-violet-200 rounded text-xs text-violet-600 px-3 py-1 font-medium mb-3">Role Management</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between bg-violet-50/50 p-2 rounded">
+              <span className="text-xs text-violet-700">Admin</span>
+              <div className="h-2 w-2 bg-violet-400 rounded-full"></div>
+            </div>
+            <div className="flex items-center justify-between bg-violet-50/50 p-2 rounded">
+              <span className="text-xs text-violet-700">Editor</span>
+              <div className="h-2 w-2 bg-violet-400 rounded-full"></div>
+            </div>
+            <div className="flex items-center justify-between bg-violet-50/50 p-2 rounded">
+              <span className="text-xs text-violet-700">Viewer</span>
+              <div className="h-2 w-2 bg-violet-400 rounded-full"></div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-violet-100 text-center">
-          <div className="h-3 w-16 bg-violet-200 rounded mb-1 text-[10px] px-1 text-violet-600 mx-auto">Roles</div>
-          <div className="h-6 w-full bg-violet-100 rounded"></div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-violet-100">
+          <div className="h-5 bg-violet-200 rounded text-xs text-violet-600 px-3 py-1 font-medium mb-3">Access Control</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between bg-green-50 p-2 rounded">
+              <span className="text-xs text-green-700">SSO Enabled</span>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </div>
+            <div className="flex items-center justify-between bg-violet-50/50 p-2 rounded">
+              <span className="text-xs text-violet-700">2FA Required</span>
+              <CheckCircle className="h-4 w-4 text-violet-500" />
+            </div>
+            <div className="flex items-center justify-between bg-violet-50/50 p-2 rounded">
+              <span className="text-xs text-violet-700">Audit Log</span>
+              <CheckCircle className="h-4 w-4 text-violet-500" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -494,6 +586,7 @@ interface FeatureDetailProps {
   description: string;
   details: string[];
   imageSide?: 'left' | 'right';
+  image?: string;
 }
 
 const FeatureDetailSection: React.FC<FeatureDetailProps> = ({
@@ -502,6 +595,7 @@ const FeatureDetailSection: React.FC<FeatureDetailProps> = ({
   description,
   details,
   imageSide = 'right',
+  image,
 }) => {
   const getIllustration = () => {
     switch (title) {
@@ -519,8 +613,8 @@ const FeatureDetailSection: React.FC<FeatureDetailProps> = ({
         return <CommunicationIllustration className="w-full max-w-2xl mx-auto" />;
       case "AI-Powered Insights & Chat":
         return <AIIllustration className="w-full max-w-2xl mx-auto" />;
-      case "Customization & Settings":
-        return <SettingsIllustration className="w-full max-w-2xl mx-auto" />;
+      case "Customized dashboards":
+        return <CustomInsightsIllustration className="w-full max-w-2xl mx-auto" />;
       case "Organization & User Management":
         return <OrgManagementIllustration className="w-full max-w-2xl mx-auto" />;
       default:
@@ -727,14 +821,13 @@ export function Features() {
 
       <FeatureDetailSection
         icon={SettingsIcon}
-        title="Customization & Settings"
-        description="Tailor ProgramMatrix to fit your specific program methodologies, terminology, and organizational needs."
+        title="Customized dashboards"
+        description="Build customized dashboards to meet your specific needs. Share, Export and Schedule your reports."
         details={[
-          'Configure custom fields for tasks, risks, and other elements.',
-          'Define custom program phases and workflows.',
-          'Set up notification preferences.',
-          'Adjust platform settings to match company standards.',
-          '(Executive Plan) Tailored module development.'
+          'Configure reports for tasks, risks, and other elements.',
+          'Define custom metrics for different data sources',
+          'Set up scheduling preferences for reports.',
+          'Add multiple reports to be customized and shared at once.',
         ]}
         imageSide="left"
       />
@@ -745,12 +838,13 @@ export function Features() {
         description="Securely manage user access, roles, and permissions across your organization (Available for Admins)."
         details={[
           'Invite and manage team members.',
-          'Define roles with specific permissions (e.g., Viewer, Editor, Admin). - Coming Soon',
+          'Define roles with specific permissions (e.g., Viewer, Editor, Admin).',
           'Assign users to specific programs or projects.',
           'Maintain secure access control.',
           '(Executive Plan) Integration with SSO/Identity Providers.'
         ]}
         imageSide="right"
+        image="/illustrations/user-management.svg"
       />
 
       {/* Final CTA Section */}

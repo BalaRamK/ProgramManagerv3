@@ -261,12 +261,12 @@ function HomePage() {
             <FeatureHighlight
               icon={LineChart} /* Or PieChart */
               title="KPI & Financial Tracking"
-              description="Monitor budget vs. actuals, track key performance indicators, and generate financial reports."
+              description="Monitor profits, RoI, track costs and revenue, and generate financial reports."
             />
             <FeatureHighlight
               icon={Shield}
-              title="Risk & Scenario Planning"
-              description="Identify, assess, and mitigate risks. Simulate 'what-if' scenarios to make informed decisions."
+              title="Risk Planning"
+              description="Identify, assess, and mitigate risks. Monitor closed risks and plan to mitigate existing ones with color coding."
             />
              <FeatureHighlight
               icon={FileTextIcon}
@@ -281,12 +281,12 @@ function HomePage() {
             <FeatureHighlight
               icon={Sliders} /* Or Globe2 */
               title="Custom Insights & AI Chat"
-              description="Generate tailored reports and leverage AI assistance for data analysis and suggestions."
+              description="Leverage AI assistance for data analysis and suggestions. Don't shy away to ask questions."
             />
              <FeatureHighlight
               icon={SettingsIcon}
-              title="Customization & Settings"
-              description="Configure the platform to your specific program needs and organizational structure."
+              title="Customized Dashboards"
+              description="Generate tailored reports. Share, Export and Schedule reports in bulk according to program needs."
             />
              <FeatureHighlight
               icon={UsersIcon} /* Reuse for Org Settings */

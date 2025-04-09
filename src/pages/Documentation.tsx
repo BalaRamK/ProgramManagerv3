@@ -103,42 +103,42 @@ export default function Documentation() {
     
     setSaving(true);
     try {
-      // Ensure content has proper wrapper
-      let contentToSave = editedContent;
-      if (!editedContent.includes('documentation-section')) {
-        contentToSave = `<div class="documentation-section">
-          ${editedContent}
-        </div>`;
-      }
-
+      // Update the section in the database
       const { error } = await supabase
         .from('documentation')
         .update({
           title: editedTitle,
-          content: contentToSave,
+          content: editedContent // Remove the content wrapper logic as it's not needed
         })
         .eq('id', currentSection.id);
 
       if (error) throw error;
 
       // Update local state
-      setCurrentSection({
+      const updatedSection = {
         ...currentSection,
         title: editedTitle,
-        content: contentToSave
-      });
+        content: editedContent
+      };
+      setCurrentSection(updatedSection);
       
-      // Refresh the sections
-      const { data } = await supabase
-        .from('documentation')
-        .select('*')
-        .order('order_number');
+      // Update the section in the sections array
+      const updateSectionsRecursively = (items: DocSection[]): DocSection[] => {
+        return items.map(item => {
+          if (item.id === currentSection.id) {
+            return updatedSection;
+          }
+          if (item.children) {
+            return {
+              ...item,
+              children: updateSectionsRecursively(item.children)
+            };
+          }
+          return item;
+        });
+      };
 
-      if (data) {
-        const organized = organizeHierarchy(data);
-        setSections(organized);
-      }
-
+      setSections(updateSectionsRecursively(sections));
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving documentation:', error);

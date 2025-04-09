@@ -1,0 +1,93 @@
+---
+title: Dashboard Overview
+description: Learn how to use the ProgramMatrix dashboard effectively
+category: Features
+order: 1
+---
+
+# Dashboard Overview
+
+The ProgramMatrix dashboard is your command center for program management. It provides a comprehensive view of your programs' health, progress, and key metrics.
+
+## Key Components
+
+### Program Health Cards
+Monitor the overall health of your programs at a glance:
+
+- 🟢 On Track
+- 🟡 At Risk
+- 🔴 Off Track
+
+### KPI Widgets
+Track your most important metrics:
+
+```typescript
+interface KPIWidget {
+  title: string;
+  value: number;
+  trend: 'up' | 'down';
+  change: number;
+  target?: number;
+}
+```
+
+Example metrics include:
+- Budget Utilization
+- Timeline Progress
+- Resource Allocation
+- Risk Status
+
+### Timeline View
+The timeline view shows your program's progress:
+
+- Milestone tracking
+- Dependencies visualization
+- Critical path highlighting
+- Resource allocation
+
+## Customization
+
+You can customize your dashboard in several ways:
+
+1. **Widget Layout**
+   - Drag and drop widgets
+   - Resize as needed
+   - Save custom layouts
+
+2. **Data Display**
+   - Choose metrics to display
+   - Set refresh intervals
+   - Configure alerts
+
+3. **Filtering**
+   - By program
+   - By department
+   - By status
+   - By date range
+
+## Best Practices
+
+To get the most out of your dashboard:
+
+1. **Regular Updates**
+   - Keep data current
+   - Review daily
+   - Update statuses promptly
+
+2. **Team Access**
+   - Share with stakeholders
+   - Set up automated reports
+   - Configure permissions
+
+3. **Performance Monitoring**
+   - Track trends
+   - Set up alerts
+   - Monitor deviations
+
+> 💡 **Pro Tip**: Pin your most important metrics to the top of the dashboard for quick access.
+
+## Next Steps
+
+- [Customize Your Dashboard](/docs/guides/dashboard-customization)
+- [Set Up Automated Reports](/docs/guides/automated-reports)
+- [Configure Team Access](/docs/guides/team-access) 

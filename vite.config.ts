@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import mdx from '@mdx-js/rollup';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    mdx({
+      remarkPlugins: [remarkGfm],
+      rehypePlugins: [rehypeHighlight],
+    }),
+    react(),
+  ],
   optimizeDeps: {
     include: ['react-quill'],
   },
@@ -16,6 +25,8 @@ export default defineConfig({
         },
       },
     },
+    outDir: 'dist',
+    sourcemap: true,
   },
   css: {
     preprocessorOptions: {
@@ -26,8 +37,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@': '/src',
       'quill': path.resolve(__dirname, 'node_modules/quill'),
-      '@': path.resolve(__dirname, './src'),
     },
+  },
+  server: {
+    port: 3000,
   },
 });

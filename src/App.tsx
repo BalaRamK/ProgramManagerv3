@@ -13,6 +13,7 @@ import DocumentCenter from './pages/DocumentCenter';
 import Settings from './pages/Settings';
 import CustomInsights from './pages/CustomInsights';
 import Documentation from './pages/Documentation';
+import NewDocumentation from './pages/NewDocumentation';
 import { DashboardPreview } from './components/DashboardPreview';
 import { AdminVerification } from './pages/AdminVerification';
 import { Pricing } from './pages/Pricing';
@@ -674,7 +675,7 @@ function App() {
               path="/documentation"
               element={
                 <ProtectedRoute>
-                  <Documentation />
+                  <NewDocumentation />
                 </ProtectedRoute>
               }
             />

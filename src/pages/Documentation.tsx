@@ -617,18 +617,15 @@ export default function Documentation() {
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'color': [] }, { 'background': [] }],
       ['link', 'image', 'code-block'],
-      ['clean'],
-      [{ 'class': [
-        'interactive-element',
-        'feature-card',
-        'action-button',
-        'resource-card',
-        'concept-card',
-        'quick-start-card'
-      ]}]
+      ['clean']
     ],
     clipboard: {
-      matchVisual: false // Prevent Quill from adding extra markup
+      matchVisual: false
+    },
+    keyboard: {
+      bindings: {
+        tab: false
+      }
     }
   };
 
@@ -637,8 +634,7 @@ export default function Documentation() {
     'bold', 'italic', 'underline', 'strike',
     'list', 'bullet',
     'color', 'background',
-    'link', 'image', 'code-block',
-    'class' // Allow class application
+    'link', 'image', 'code-block'
   ];
 
   return (

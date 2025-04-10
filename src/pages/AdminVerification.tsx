@@ -16,15 +16,36 @@ interface PendingUser {
   created_at: string;
 }
 
+interface ManagedUser {
+  id: string;
+  email: string;
+  name: string;
+  user_type: string;
+  created_at: string;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  raw_user_meta_data: {
+    name?: string;
+    user_type?: string;
+  } | null;
+  created_at: string;
+}
+
 export function AdminVerification() {
-  const [users, setUsers] = useState<PendingUser[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     checkAdminAccess();
+    debugSession();
   }, []);
 
   const checkAdminAccess = async () => {
@@ -37,7 +58,7 @@ export function AdminVerification() {
         return;
       }
 
-      await fetchUsers();
+      await Promise.all([fetchPendingUsers(), fetchManagedUsers()]);
     } catch (err) {
       console.error('Error checking admin access:', err);
       setError('Failed to verify admin access. Please login again.');
@@ -47,19 +68,80 @@ export function AdminVerification() {
     }
   };
 
-  const fetchUsers = async () => {
+  const debugSession = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    setSessionInfo(session);
+  };
+
+  const fetchPendingUsers = async () => {
     try {
       setError(null);
       const { data, error: fetchError } = await supabase
         .from('pending_users')
         .select('id, email, name, status, created_at')
+        .eq('status', 'pending_admin_approval')
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setUsers(data || []);
+      setPendingUsers(data || []);
     } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Failed to fetch users. Please try refreshing.');
+      console.error('Error fetching pending users:', err);
+      setError('Failed to fetch pending users. Please try refreshing.');
+    }
+  };
+
+  const fetchManagedUsers = async () => {
+    try {
+      setError(null);
+      
+      // First get the admin user's access token
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user || user.email !== ADMIN_EMAIL) {
+        throw new Error('Not authorized');
+      }
+
+      // Use the REST API with service role key
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/admin/users`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Auth API Error:', errorData);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.msg || 'Unknown error'}`);
+      }
+
+      const { users } = await response.json();
+      
+      if (!users || !Array.isArray(users)) {
+        throw new Error('Invalid users data received');
+      }
+
+      // Sort users by created_at in descending order
+      const sortedUsers = [...users].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      const formattedUsers = sortedUsers.map(user => ({
+        id: user.id,
+        email: user.email || '',
+        name: user.user_metadata?.name || '-',
+        user_type: user.user_metadata?.user_type || 'external',
+        created_at: user.created_at
+      }));
+
+      setManagedUsers(formattedUsers);
+    } catch (err) {
+      console.error('Error fetching managed users:', err);
+      setError('Failed to fetch managed users. Please try refreshing.');
     }
   };
 
@@ -106,7 +188,8 @@ export function AdminVerification() {
       const result = await response.json();
       console.log("Function success result:", result);
 
-      await fetchUsers();
+      // Refresh both lists after any action
+      await Promise.all([fetchPendingUsers(), fetchManagedUsers()]);
 
     } catch (err) {
       console.error(`Failed to ${action} user:`, err);
@@ -127,15 +210,20 @@ export function AdminVerification() {
     );
   }
 
-  const pendingUsers = users.filter(u => u.status === 'pending_admin_approval');
-  const managedUsers = users.filter(u => u.status !== 'pending_admin_approval');
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Navbar />
       <div className="p-8 mt-4">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Verification</h1>
         <p className="text-gray-600 text-lg mb-8">Manage user sign-up requests and existing users.</p>
+
+        {/* Debug Section */}
+        <div className="mb-6 p-4 bg-gray-100 border border-gray-200 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Debug Information</h2>
+          <pre className="whitespace-pre-wrap text-sm">
+            {JSON.stringify(sessionInfo, null, 2)}
+          </pre>
+        </div>
 
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg flex items-center">
@@ -229,14 +317,14 @@ export function AdminVerification() {
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {managedUsers.length === 0 ? (
                      <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">No approved or rejected users found.</td>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">No managed users found.</td>
                     </tr>
                   ) : (
                     managedUsers.map((user) => (
@@ -245,29 +333,31 @@ export function AdminVerification() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                            user.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' 
+                            user.user_type === 'internal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' 
                           }`}>
-                            {user.status}
+                            {user.user_type}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                          <Button 
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to permanently delete user ${user.email}? This action cannot be undone.`)) {
-                                handleAction(user.id, user.email, 'delete')
-                              }
-                            }}
-                            disabled={actionLoading[user.id + 'delete']}
-                          >
-                             {actionLoading[user.id + 'delete'] ? (
-                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 mr-1" />
-                            )}
-                            Delete User
-                          </Button>
+                          {user.email !== ADMIN_EMAIL && (
+                            <Button 
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to permanently delete user ${user.email}? This action cannot be undone.`)) {
+                                  handleAction(user.id, user.email, 'delete')
+                                }
+                              }}
+                              disabled={actionLoading[user.id + 'delete']}
+                            >
+                               {actionLoading[user.id + 'delete'] ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-1" />
+                              )}
+                              Delete User
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))

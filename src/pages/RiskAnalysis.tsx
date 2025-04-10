@@ -18,6 +18,7 @@ interface Risk {
   organization_name?: string;
   milestone_title?: string;
   status: 'open' | 'closed';
+  created_by: string;
 }
 
 interface Program {
@@ -65,7 +66,8 @@ export function RiskAnalysis() {
     mitigation_strategy: '',
     update: [],
     update_date: format(new Date(), 'yyyy-MM-dd'),
-    status: 'open'
+    status: 'open',
+    created_by: ''
   });
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -93,7 +95,7 @@ export function RiskAnalysis() {
 
         setOrganizations(orgsData || []);
 
-        // Fetch risks with all fields including status
+        // Fetch risks with all fields including status and created_by
         const { data: risksData, error: risksError } = await supabase
           .from('risk_view')
           .select(`
@@ -109,8 +111,10 @@ export function RiskAnalysis() {
             program_name,
             organization_name,
             milestone_title,
-            status
-          `) as { data: Risk[] | null, error: any };
+            status,
+            created_by
+          `)
+          .eq('created_by', userData.user.id) as { data: Risk[] | null, error: any };
 
         if (risksError) {
           console.error('Error fetching risks:', risksError);
@@ -250,6 +254,12 @@ export function RiskAnalysis() {
   // Function to handle risk update
   const handleUpdateRisk = async () => {
     if (selectedRisk) {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.error('User not authenticated');
+        return;
+      }
+
       const { error } = await supabase
         .from('risks')
         .update({
@@ -263,7 +273,8 @@ export function RiskAnalysis() {
           update_date: selectedRisk.update_date,
           status: selectedRisk.status
         })
-        .eq('id', selectedRisk.id);
+        .eq('id', selectedRisk.id)
+        .eq('created_by', userData.user.id);
 
       if (error) {
         console.error('Error updating risk:', error);
@@ -284,8 +295,10 @@ export function RiskAnalysis() {
             program_name,
             organization_name,
             milestone_title,
-            status
-          `) as { data: Risk[] | null, error: any };
+            status,
+            created_by
+          `)
+          .eq('created_by', userData.user.id) as { data: Risk[] | null, error: any };
 
         if (risksData) {
           const processedRisks = risksData.map(risk => ({
@@ -302,10 +315,17 @@ export function RiskAnalysis() {
 
   // Function to handle risk status change
   const handleStatusChange = async (risk: Risk, newStatus: 'open' | 'closed') => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     const { error } = await supabase
       .from('risks')
       .update({ status: newStatus })
-      .eq('id', risk.id);
+      .eq('id', risk.id)
+      .eq('created_by', userData.user.id);
 
     if (error) {
       console.error('Error updating risk status:', error);
@@ -326,8 +346,10 @@ export function RiskAnalysis() {
           program_name,
           organization_name,
           milestone_title,
-          status
-        `) as { data: Risk[] | null, error: any };
+          status,
+          created_by
+        `)
+        .eq('created_by', userData.user.id) as { data: Risk[] | null, error: any };
 
       if (risksData) {
         const processedRisks = risksData.map(risk => ({
@@ -348,6 +370,12 @@ export function RiskAnalysis() {
         return;
       }
 
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        console.error('User not authenticated');
+        return;
+      }
+
       // First, insert the new risk
       const { data: newRiskData, error: insertError } = await supabase
         .from('risks')
@@ -360,7 +388,8 @@ export function RiskAnalysis() {
           mitigation_strategy: newRisk.mitigation_strategy,
           update: newRisk.update || [], // Ensure update is an array
           update_date: format(new Date(), 'yyyy-MM-dd'),
-          status: 'open' // Set initial status as open
+          status: 'open', // Set initial status as open
+          created_by: userData.user.id // Set the creator
         })
         .select()
         .single();
@@ -387,8 +416,10 @@ export function RiskAnalysis() {
             program_name,
             organization_name,
             milestone_title,
-            status
-          `) as { data: Risk[] | null, error: any };
+            status,
+            created_by
+          `)
+          .eq('created_by', userData.user.id) as { data: Risk[] | null, error: any };
 
         if (refreshError) {
           console.error('Error refreshing risks:', refreshError);
@@ -411,7 +442,8 @@ export function RiskAnalysis() {
             mitigation_strategy: '',
             update: [],
             update_date: format(new Date(), 'yyyy-MM-dd'),
-            status: 'open'
+            status: 'open',
+            created_by: userData.user.id
           });
         }
       }

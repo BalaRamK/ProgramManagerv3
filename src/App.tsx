@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import Footer from './components/Footer';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Dashboard } from './pages/Dashboard';
@@ -43,6 +44,8 @@ import { Features } from './pages/Features';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import License from './pages/License';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 interface FeatureProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -511,57 +514,6 @@ function HomePage() {
            </div>
          </div>
        </section>
-
-
-      {/* Footer */}
-      <footer className="bg-gray-900">
-         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-           <div className="grid gap-8 md:grid-cols-4">
-             <div>
-               <h3 className="text-lg font-semibold text-white">ProgramMatrix</h3>
-               <p className="mt-4 text-sm text-gray-400">
-                 Unified Program Management. Simplified.
-               </p>
-             </div>
-             <div>
-               <h4 className="text-base font-semibold text-white">Core Features</h4>
-               <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                 <li><Link to="/features" className="hover:text-white">Dashboard</Link></li>
-                 <li><Link to="/features" className="hover:text-white">Roadmapping</Link></li>
-                 <li><Link to="/features" className="hover:text-white">Financials & KPIs</Link></li>
-                 <li><Link to="/features" className="hover:text-white">Risk Analysis</Link></li>
-                 <li><Link to="/features" className="hover:text-white">Document Center</Link></li>
-               </ul>
-             </div>
-             <div>
-               <h4 className="text-base font-semibold text-white">Resources</h4>
-               <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                 <li><Link to="/documentation" className="hover:text-white">Documentation</Link></li>
-                 <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
-                 {/* Add links if Blog/Case Studies exist */}
-                 <li><span className="opacity-50">Blog & Case Studies (Coming Soon)</span></li>
-                 <li><span className="opacity-50">Community (Coming Soon)</span></li>
-               </ul>
-             </div>
-             <div>
-               <h4 className="text-base font-semibold text-white">Contact</h4>
-               <ul className="mt-4 space-y-2 text-sm text-gray-400">
-                 <li className="flex items-center gap-2">
-                   <MessageSquareIcon className="h-4 w-4" />
-                   <a href="mailto:balaramakrishnasaikarumanchi0@gmail.com" className="hover:text-white">Email Support</a>
-                 </li>
-                 {/* <li className="flex items-center gap-2">
-                   <Phone className="h-4 w-4" /> +91 94927 06718
-                 </li> */}
-               </ul>
-             </div>
-           </div>
-           <div className="mt-8 border-t border-gray-800 pt-8 text-center">
-             <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} ProgramMatrix. All rights reserved.</p>
-           </div>
-         </div>
-      </footer>
-
     </div>
   );
 }
@@ -578,17 +530,20 @@ function App() {
           <NavNotificationBar />
           <Toaster position="top-right"/>
           <Routes>
-            <Route path="/" element={<><Navbar /><HomePage /></>} />
-            <Route path="/login" element={<><Navbar /><Login /></>} />
-            <Route path="/signup" element={<><Navbar /><Signup /></>} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/pricing" element={<><Navbar /><Pricing /></>} />
+            <Route path="/" element={<><Navbar /><HomePage /><Footer /></>} />
+            <Route path="/login" element={<><Navbar /><Login /><Footer /></>} />
+            <Route path="/signup" element={<><Navbar /><Signup /><Footer /></>} />
+            <Route path="/features" element={<><Features /><Footer /></>} />
+            <Route path="/pricing" element={<><Navbar /><Pricing /><Footer /></>} />
+            <Route path="/license" element={<><Navbar /><License /><Footer /></>} />
+            <Route path="/privacy-policy" element={<><Navbar /><PrivacyPolicy /><Footer /></>} />
             <Route
               path="/admin/verification"
               element={
                 <AdminRoute>
                   <Navbar />
                   <AdminVerification />
+                  <Footer />
                 </AdminRoute>
               }
             />
@@ -676,6 +631,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <NewDocumentation />
+                  <Footer />
                 </ProtectedRoute>
               }
             />
